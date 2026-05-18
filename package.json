@@ -1,0 +1,36 @@
+{
+  "name": "mentory-monorepo",
+  "version": "1.0.0",
+  "description": "Mentory — AI-powered Telegram Bot & Mini App for language learning with Anthropic API",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:bot": "npm --workspace=apps/bot run dev",
+    "dev:miniapp": "npm --workspace=apps/miniapp run dev",
+    "build:bot": "npm --workspace=apps/bot run build",
+    "build:miniapp": "npm --workspace=apps/miniapp run build",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "miniapp",
+    "ai",
+    "language-learning",
+    "anthropic",
+    "claude",
+    "grammy",
+    "react",
+    "spaced-repetition"
+  ],
+  "author": "ElshodDev",
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  }
+}
