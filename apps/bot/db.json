@@ -1,0 +1,37 @@
+{
+  "users": [
+    {
+      "telegramId": 12345,
+      "firstName": "Mehmon",
+      "username": "mehmon_user",
+      "xp": 1520,
+      "streak": 1,
+      "lastActiveDate": "2026-05-19",
+      "totalLessons": 1,
+      "isSubscribed": false,
+      "joinedAt": "2026-05-19"
+    }
+  ],
+  "words": [
+    {
+      "id": "essential_12345",
+      "userId": 12345,
+      "word": "essential",
+      "translation": "muhim, zarur",
+      "sentence": "Sleep is not just a time for the body to rest; it is essential for the brain to process information.",
+      "interval": 3,
+      "repetitions": 2,
+      "easeFactor": 2.5,
+      "nextReviewDate": "2026-05-22"
+    }
+  ],
+  "feedbacks": [
+    {
+      "id": "12345_1779192645513",
+      "userId": 12345,
+      "rating": 5,
+      "comment": "Loyiha ajoyib! Menga yangi qo'shilgan Writing bo'limi juda yoqdi.",
+      "createdAt": "2026-05-19T12:10:45.513Z"
+    }
+  ]
+}

@@ -9,12 +9,17 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.20.0",
+    "@anthropic-ai/sdk": "^0.20.9",
+    "@google/generative-ai": "^0.24.1",
     "@mentory/shared-types": "1.0.0",
+    "cors": "^2.8.6",
     "dotenv": "^16.4.5",
+    "express": "^5.2.1",
     "grammy": "^1.22.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
   }

@@ -46,3 +46,24 @@ export interface SpeakingPracticeResult {
   aiFeedback: string;
   correctedTranscript?: string;
 }
+
+export type TaskType = 'task1_1' | 'task1_2' | 'task2';
+export type SituationType = 'cancellation' | 'change' | 'feedback' | 'new_plans' | 'complaint' | 'preference';
+export type Sentiment = 'positive' | 'negative' | 'mixed';
+export type Task2Type = 'advantages_disadvantages' | 'opinion';
+
+export interface WritingRequest {
+  taskType: TaskType;
+  situationType?: SituationType;
+  sentiment?: Sentiment;
+  task2Type?: Task2Type;
+  userText?: string; // tekshirish uchun
+}
+
+export interface WritingResponse {
+  structure: string;
+  sample: string;
+  wordCount: number;
+  score?: number;
+  feedback?: string;
+}
