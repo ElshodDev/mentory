@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Headphones, BrainCircuit, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Headphones, BrainCircuit, Sparkles, ArrowRight } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 
 interface OnboardingProps {

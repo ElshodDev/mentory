@@ -197,7 +197,7 @@ export default function App() {
       {/* MAIN CONTENT AREA */}
       <div className="p-5 relative z-10 min-h-[70vh]">
         <AnimatePresence mode="wait">
-          {activeTab === 'profile' && <ProfileTab profile={profile} />}
+          {activeTab === 'profile' && <ProfileTab profile={profile} onProfileUpdated={setProfile} />}
           {activeTab === 'reading' && (
             <ReadingTab 
               telegramId={telegramId} 

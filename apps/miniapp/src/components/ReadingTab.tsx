@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Sparkles, Mic, ChevronRight, CheckCircle2, Volume2, Plus, Image, Upload } from 'lucide-react';
+import { RefreshCw, Sparkles, Mic, ChevronRight, CheckCircle2, Volume2, Plus, Image } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { apiService } from '../services/api';
 
