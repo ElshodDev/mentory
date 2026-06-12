@@ -49,14 +49,13 @@ bot.on('message:text', async (ctx, next) => {
   
   if (ytMatch && ytMatch[1]) {
     const videoId = ytMatch[1];
-    const miniAppUrl = `https://t.me/${process.env.BOT_USERNAME || 'mentory_ai_bot'}?startapp=video_${videoId}`;
     
     await ctx.reply(
       "🎬 *YouTube videoni interaktiv rejimda ko'rish!*\n\nBu videoni ingliz tilini o'rganish rejimida ochish uchun quyidagi tugmani bosing:",
       {
         parse_mode: 'Markdown',
         reply_markup: {
-          inline_keyboard: [[{ text: "🎬 Videoni ochish va so'zlarni o'rganish", url: miniAppUrl }]]
+          inline_keyboard: [[{ text: "🎬 Videoni ochish va so'zlarni o'rganish", web_app: { url: `${MINI_APP_URL}?video=${videoId}` } }]]
         }
       }
     );

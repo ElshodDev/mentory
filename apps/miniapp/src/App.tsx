@@ -72,8 +72,14 @@ export default function App() {
       
       // Check deep link
       const startParam = WebApp.initDataUnsafe?.start_param;
+      const queryParams = new URLSearchParams(window.location.search);
+      const videoQuery = queryParams.get('video');
+      
       if (startParam && startParam.startsWith('video_')) {
         setStartVideoId(startParam.replace('video_', ''));
+        setActiveTab('listening');
+      } else if (videoQuery) {
+        setStartVideoId(videoQuery);
         setActiveTab('listening');
       }
 
