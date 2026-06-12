@@ -9,6 +9,7 @@ import { handleWritingQuery } from './handlers/writing.handler';
 import { handleStartCommand, handleOnboardingCallback, subCheckKeyboard, mainMenuKeyboard } from './handlers/start.handler';
 import { createApiRouter } from './controllers/api.controller';
 import { UserService } from './services/user.service';
+import { handlePhotoMessage } from './handlers/photo.handler';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -37,6 +38,64 @@ bot.use(session({ initial: (): SessionData => ({}) }));
 bot.command('start', handleStartCommand);
 
 bot.callbackQuery(/onboard_(a1|b1|c1)/, handleOnboardingCallback);
+
+bot.on('message:photo', handlePhotoMessage);
+
+// Catch YouTube links
+bot.on('message:text', async (ctx, next) => {
+  const text = ctx.message.text;
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]{11})/;
+  const ytMatch = text.match(youtubeRegex);
+  
+  if (ytMatch && ytMatch[1]) {
+    const videoId = ytMatch[1];
+    const miniAppUrl = `https://t.me/${process.env.BOT_USERNAME}?startapp=video_${videoId}`;
+    
+    await ctx.reply(
+      "🎬 *YouTube videoni interaktiv rejimda ko'rish!*\n\nBu videoni ingliz tilini o'rganish rejimida ochish uchun quyidagi tugmani bosing:",
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[{ text: "🎬 Videoni ochish va so'zlarni o'rganish", url: miniAppUrl }]]
+        }
+      }
+    );
+    return;
+  }
+
+  // Check for Instagram link
+  const igRegex = /(?:https?:\/\/)?(?:www\.)?instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i;
+  const igMatch = text.match(igRegex);
+
+  if (igMatch) {
+    const waitMsg = await ctx.reply("⏳ Instagram videoni yuklab olyapman, kuting...");
+    try {
+      const { instagramDownload } = require('@mrnima/instagram-downloader');
+      const res = await instagramDownload(text);
+      if (res && res.data && res.data.length > 0) {
+        // Find video or image
+        const item = res.data[0];
+        if (item.url) {
+          if (item.type === 'video') {
+            await ctx.replyWithVideo(item.url, { caption: "Mana sizning videongiz! 🚀\n\n_P.S. Ingliz tilini ham Mentory bilan o'rganing!_", parse_mode: 'Markdown' });
+          } else {
+            await ctx.replyWithPhoto(item.url, { caption: "Mana rasm! 🚀\n\n_P.S. Ingliz tilini ham Mentory bilan o'rganing!_", parse_mode: 'Markdown' });
+          }
+        }
+      } else {
+        await ctx.reply("❌ Uzr, bu linkdan hech narsa topa olmadim yoki video yopiq profilda.");
+      }
+    } catch (e) {
+      console.error(e);
+      await ctx.reply("❌ Uzr, videoni yuklab olishda xatolik yuz berdi. Iltimos, qayta urinib ko'ring.");
+    } finally {
+      await ctx.api.deleteMessage(ctx.chat.id, waitMsg.message_id).catch(() => {});
+    }
+    return;
+  }
+
+  await next();
+});
 
 bot.command('writing', async (ctx) => {
   ctx.session.waitingFor = 'writing_tutor';
@@ -128,9 +187,8 @@ bot.callbackQuery('check_sub', async (ctx) => {
 // ─── API SERVER (Mini App uchun) ───────────────────────────────────────────
 const app = express();
 app.use(cors());
-app.use(express.json());
-
-// Load API routes
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/api', createApiRouter(bot, CHANNEL_USERNAME));
 
 app.listen(3000, () => {

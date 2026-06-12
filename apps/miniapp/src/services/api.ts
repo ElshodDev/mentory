@@ -113,5 +113,49 @@ export const apiService = {
     });
     if (!res.ok) throw new Error('Complete battle error');
     return res.json();
+  },
+
+  async getShadowingSentence(level: string) {
+    const res = await fetch(`/api/shadowing/sentence?level=${level}`);
+    if (!res.ok) throw new Error('Shadowing fetch error');
+    return res.json();
+  },
+
+  async evaluateShadowing(userId: number, audioBase64: string, mimeType: string, targetSentence: string) {
+    const res = await fetch('/api/shadowing/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, audioBase64, mimeType, targetSentence })
+    });
+    if (!res.ok) throw new Error('Shadowing evaluate error');
+    return res.json();
+  },
+
+  async getMockTestQuestions() {
+    const res = await fetch('/api/mock-test/questions');
+    if (!res.ok) throw new Error('Mock questions error');
+    return res.json();
+  },
+
+  async evaluateMockTest(userId: number, audioPartsBase64: string[], mimeType: string, questions: any) {
+    const res = await fetch('/api/mock-test/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, audioPartsBase64, mimeType, questions })
+    });
+    if (!res.ok) throw new Error('Mock test evaluate error');
+    return res.json();
+  },
+
+  async getYoutubeTranscript(videoId: string) {
+    const res = await fetch(`/api/video/transcript?videoId=${videoId}`);
+    if (!res.ok) throw new Error('Transcript fetch error');
+    return res.json();
+  },
+
+  async getYoutubeVocab(videoId: string) {
+    const res = await fetch(`/api/video/vocab?videoId=${videoId}`);
+    if (!res.ok) throw new Error('Vocab fetch error');
+    return res.json();
   }
 };

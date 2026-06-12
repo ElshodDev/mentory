@@ -13,26 +13,48 @@ export class UserService {
     if (xp < 1500) return { level: 5, title: 'Upper-Intermediate', emoji: '🏆' };
     return         { level: 6, title: 'Advanced',      emoji: '💎' };
   }
-
   static getOrCreateUser(telegramId: number, firstName: string, username?: string): DbUserProfile {
     let profile = dbManager.getUser(telegramId);
+    const today = UserService.getTodayDate();
+
     if (!profile) {
       profile = dbManager.createUser({
         telegramId,
         firstName,
         username,
         xp: 0,
-        streak: 0,
-        lastActiveDate: '',
+        streak: 1,
+        lastActiveDate: today,
         totalLessons: 0,
         isSubscribed: false,
-        joinedAt: UserService.getTodayDate(),
+        joinedAt: today,
         league: 'Bronze',
         referrals: 0,
         wins: 0,
         losses: 0,
         isPremium: false,
       });
+    } else {
+      // Update streak
+      if (profile.lastActiveDate !== today) {
+        if (!profile.lastActiveDate) {
+          profile.streak = 1;
+        } else {
+          // Check if yesterday
+          const lastDate = new Date(profile.lastActiveDate);
+          const currentDate = new Date(today);
+          const diffTime = Math.abs(currentDate.getTime() - lastDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 1) {
+            profile.streak += 1;
+          } else if (diffDays > 1) {
+            profile.streak = 1; // lost streak
+          }
+        }
+        profile.lastActiveDate = today;
+        dbManager.updateUser(profile);
+      }
     }
     return profile;
   }

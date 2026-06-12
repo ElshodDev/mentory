@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Star, Flame, BookOpen, Layers, Mic, Edit, Trophy, Sparkles, Users, Target, Swords, Crown } from 'lucide-react';
+import { Flame, BookOpen, Layers, Mic, Trophy, Sparkles, Users, Target, Swords, Crown, Zap } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { apiService } from './services/api';
 
 import { ReadingTab } from './components/ReadingTab';
 import { FlashcardsTab } from './components/FlashcardsTab';
 import { WritingTutorTab } from './components/WritingTutorTab';
-import { VoiceAITab } from './components/VoiceAITab';
 import { LeaderboardTab } from './components/LeaderboardTab';
 import { ReferralsTab } from './components/ReferralsTab';
 import { QuizzesTab } from './components/QuizzesTab';
 import { BattleTab } from './components/BattleTab';
 import { PremiumTab } from './components/PremiumTab';
+import { ShadowingTab } from './components/ShadowingTab';
+import { MockTestTab } from './components/MockTestTab';
+import { ListeningTab } from './components/ListeningTab';
 
 // Shared Types
 export interface UserProfile {
@@ -36,9 +38,10 @@ export interface SavedWord {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'reading' | 'cards' | 'writing' | 'voice' | 'leaderboard' | 'referrals' | 'quizzes' | 'battle' | 'premium'>('reading');
+  const [activeTab, setActiveTab] = useState<'reading' | 'cards' | 'listening' | 'writing' | 'voice' | 'leaderboard' | 'referrals' | 'quizzes' | 'battle' | 'premium' | 'mocktest'>('reading');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [startVideoId, setStartVideoId] = useState<string | undefined>(undefined);
 
   // Get Telegram WebApp user or mock
   const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
@@ -65,6 +68,14 @@ export default function App() {
     try {
       WebApp.ready();
       WebApp.expand();
+      
+      // Check deep link
+      const startParam = WebApp.initDataUnsafe?.start_param;
+      if (startParam && startParam.startsWith('video_')) {
+        setStartVideoId(startParam.replace('video_', ''));
+        setActiveTab('listening');
+      }
+
       WebApp.setHeaderColor('#090a12');
       WebApp.setBackgroundColor('#090a12');
     } catch (e) {}
@@ -125,13 +136,17 @@ export default function App() {
             <button onClick={() => setActiveTab('referrals')} className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-cyan-500/5 active:scale-95 transition-transform">
               <Users className="w-4 h-4 text-cyan-400" />
             </button>
-            <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-orange-500/5">
-              <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
-              <span className="font-extrabold text-sm text-orange-400">{profile?.streak || 0}</span>
+            
+            {/* Streak UI */}
+            <div className="flex items-center gap-1.5 bg-[#1a1c2e] px-3 py-1.5 rounded-full border border-orange-500/30">
+              <Flame className="w-4 h-4 text-orange-500" />
+              <span className="font-bold text-orange-400">{profile?.streak || 0}</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-indigo-500/5">
-              <Star className="w-4 h-4 text-indigo-400" />
-              <span className="font-extrabold text-sm text-indigo-400">{profile?.xp || 0}</span>
+            
+            {/* XP UI */}
+            <div className="flex items-center gap-1.5 bg-[#1a1c2e] px-3 py-1.5 rounded-full border border-indigo-500/30">
+              <Zap className="w-4 h-4 text-indigo-400" />
+              <span className="font-bold text-indigo-300">{profile?.xp || 0} XP</span>
             </div>
           </div>
         </div>
@@ -176,10 +191,17 @@ export default function App() {
             />
           )}
           {activeTab === 'writing' && <WritingTutorTab />}
+          {activeTab === 'listening' && (
+            <ListeningTab 
+              telegramId={telegramId}
+              initialVideoId={startVideoId}
+            />
+          )}
           {activeTab === 'voice' && (
-            <VoiceAITab 
-              telegramId={telegramId} 
-              onProfileUpdated={(p) => setProfile(p)} 
+            <ShadowingTab 
+              telegramId={telegramId}
+              currentLevel={currentLevel.cefr}
+              onProfileUpdated={(p) => setProfile(p)}
             />
           )}
           {activeTab === 'quizzes' && (
@@ -187,6 +209,12 @@ export default function App() {
               telegramId={telegramId}
               currentLevel={currentLevel.cefr}
               onXpEarned={addXpPoints}
+            />
+          )}
+          {activeTab === 'mocktest' && (
+            <MockTestTab 
+              telegramId={telegramId}
+              onProfileUpdated={(p) => setProfile(p)}
             />
           )}
           {activeTab === 'battle' && (
@@ -217,10 +245,13 @@ export default function App() {
             {activeTab === 'cards' && <div className="absolute -bottom-4 w-1 h-1 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]"></div>}
           </button>
 
-          <button onClick={() => { try { WebApp.HapticFeedback.selectionChanged(); } catch(e){} setActiveTab('writing'); }} className={`flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === 'writing' ? 'text-indigo-400 scale-110' : 'text-slate-500 hover:text-slate-400'}`}>
-            <Edit className={`${activeTab === 'writing' ? 'w-6 h-6 stroke-[2.5px]' : 'w-6 h-6'}`} />
-            <span className="text-[9px] font-bold uppercase tracking-wider">Writing</span>
-            {activeTab === 'writing' && <div className="absolute -bottom-4 w-1 h-1 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]"></div>}
+          <button onClick={() => { try { WebApp.HapticFeedback.selectionChanged(); } catch(e){} setActiveTab('listening'); }} className={`flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === 'listening' ? 'text-rose-400 scale-110' : 'text-slate-500 hover:text-slate-400'}`}>
+            <div className="relative">
+              <Mic className={`${activeTab === 'listening' ? 'w-6 h-6 stroke-[2.5px]' : 'w-6 h-6'}`} />
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping"></div>
+            </div>
+            <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider">YouTube</span>
+            {activeTab === 'listening' && <div className="absolute -bottom-4 w-1 h-1 bg-rose-400 rounded-full shadow-[0_0_8px_rgba(251,113,133,0.8)]"></div>}
           </button>
 
           <button onClick={() => { try { WebApp.HapticFeedback.selectionChanged(); } catch(e){} setActiveTab('quizzes'); }} className={`flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === 'quizzes' ? 'text-indigo-400 scale-110' : 'text-slate-500 hover:text-slate-400'}`}>
@@ -229,13 +260,12 @@ export default function App() {
             {activeTab === 'quizzes' && <div className="absolute -bottom-4 w-1 h-1 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]"></div>}
           </button>
 
-          <button onClick={() => { try { WebApp.HapticFeedback.selectionChanged(); } catch(e){} setActiveTab('voice'); }} className={`flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === 'voice' ? 'text-rose-400 scale-110' : 'text-slate-500 hover:text-slate-400'}`}>
+          <button onClick={() => { try { WebApp.HapticFeedback.selectionChanged(); } catch(e){} setActiveTab('mocktest'); }} className={`flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === 'mocktest' ? 'text-rose-400 scale-110' : 'text-slate-500 hover:text-slate-400'}`}>
             <div className="relative">
-              <Mic className={`${activeTab === 'voice' ? 'w-6 h-6 stroke-[2.5px]' : 'w-6 h-6'}`} />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping"></div>
+              <Mic className={`${activeTab === 'mocktest' ? 'w-6 h-6 stroke-[2.5px]' : 'w-6 h-6'}`} />
             </div>
-            <span className="text-[9px] font-bold uppercase tracking-wider">Voice AI</span>
-            {activeTab === 'voice' && <div className="absolute -bottom-4 w-1 h-1 bg-rose-400 rounded-full shadow-[0_0_8px_rgba(251,113,133,0.8)]"></div>}
+            <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider">IELTS</span>
+            {activeTab === 'mocktest' && <div className="absolute -bottom-4 w-1 h-1 bg-rose-400 rounded-full shadow-[0_0_8px_rgba(251,113,133,0.8)]"></div>}
           </button>
 
           <button onClick={() => { try { WebApp.HapticFeedback.selectionChanged(); } catch(e){} setActiveTab('leaderboard'); }} className={`flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === 'leaderboard' ? 'text-yellow-400 scale-110' : 'text-slate-500 hover:text-slate-400'}`}>

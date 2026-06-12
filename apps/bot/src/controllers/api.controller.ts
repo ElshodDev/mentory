@@ -3,8 +3,9 @@ import { AIService } from '../services/ai.service';
 import { UserService } from '../services/user.service';
 import { dbManager } from '../repositories/db.repository';
 import { Bot } from 'grammy';
+import { YoutubeTranscript } from 'youtube-transcript';
 
-export function createApiRouter(bot: Bot<any>, channelUsername: string) {
+export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
   const router = Router();
 
   router.post('/translate', async (req, res) => {
@@ -25,9 +26,9 @@ export function createApiRouter(bot: Bot<any>, channelUsername: string) {
       req.query.username ? String(req.query.username) : 'guest_user'
     );
 
-    if (profile.totalLessons >= 1) {
+    if (profile.totalLessons >= 1 && bot && channelUsername) {
       try {
-        const member = await bot.api.getChatMember(channelUsername, userId);
+        const member = await bot.api.getChatMember(`@${channelUsername}`, userId);
         const isOk = ['member', 'administrator', 'creator'].includes(member.status);
         profile.isSubscribed = isOk;
         dbManager.updateUser(profile);
@@ -41,16 +42,17 @@ export function createApiRouter(bot: Bot<any>, channelUsername: string) {
   router.get('/user/subscription/:id', async (req, res) => {
     const userId = Number(req.params.id);
     try {
-      const member = await bot.api.getChatMember(channelUsername, userId);
+      if (!bot || !channelUsername) return res.json({ subscribed: false });
+      const member = await bot.api.getChatMember(`@${channelUsername}`, userId);
       const isOk = ['member', 'administrator', 'creator'].includes(member.status);
       const profile = dbManager.getUser(userId);
       if (profile) {
         profile.isSubscribed = isOk;
         dbManager.updateUser(profile);
       }
-      res.json({ isSubscribed: isOk });
-    } catch (error) {
-      res.json({ isSubscribed: false });
+      res.json({ subscribed: isOk });
+    } catch (e) {
+      res.json({ subscribed: false });
     }
   });
 
@@ -131,6 +133,94 @@ export function createApiRouter(bot: Bot<any>, channelUsername: string) {
     } catch (error) {
       console.error("BATTLE COMPLETE ERROR:", error);
       res.status(500).json({ error: "Jang natijasini saqlashda xatolik" });
+    }
+  });
+
+  router.get('/shadowing/sentence', async (req, res) => {
+    try {
+      const level = req.query.level ? String(req.query.level) : 'B1';
+      const data = await AIService.generateShadowingSentence(level);
+      res.json(data);
+    } catch (error) {
+      console.error("SHADOWING SENTENCE ERROR:", error);
+      res.status(500).json({ error: "Jumla yuklashda xatolik" });
+    }
+  });
+
+  router.post('/shadowing/evaluate', async (req, res) => {
+    try {
+      const { userId, audioBase64, mimeType, targetSentence } = req.body;
+      const evaluation = await AIService.evaluateShadowing(audioBase64, mimeType, targetSentence);
+      
+      const user = dbManager.getUser(Number(userId));
+      if (user && evaluation.score >= 50) {
+        // Add XP based on score
+        const xpEarned = Math.floor(evaluation.score / 5);
+        user.xp += xpEarned;
+        dbManager.updateUser(user);
+        evaluation.xpEarned = xpEarned;
+        evaluation.profile = user;
+      }
+      
+      res.json(evaluation);
+    } catch (error) {
+      console.error("SHADOWING EVALUATE ERROR:", error);
+      res.status(500).json({ error: "Ovozni tahlil qilishda xatolik" });
+    }
+  });
+
+  router.get('/mock-test/questions', async (req, res) => {
+    try {
+      const data = await AIService.generateMockQuestions();
+      res.json(data);
+    } catch (error) {
+      console.error("MOCK TEST QUESTIONS ERROR:", error);
+      res.status(500).json({ error: "Savollarni yuklashda xatolik" });
+    }
+  });
+
+  router.post('/mock-test/evaluate', async (req, res) => {
+    try {
+      const { userId, audioPartsBase64, mimeType, questions } = req.body;
+      const evaluation = await AIService.evaluateMockIELTS(audioPartsBase64, mimeType, questions);
+      
+      const user = dbManager.getUser(Number(userId));
+      if (user && evaluation.bandScore > 0) {
+        // Add huge XP for completing a mock test
+        user.xp += 500;
+        dbManager.updateUser(user);
+        evaluation.xpEarned = 500;
+        evaluation.profile = user;
+      }
+      
+      res.json(evaluation);
+    } catch (error) {
+      console.error("MOCK TEST EVALUATE ERROR:", error);
+      res.status(500).json({ error: "Testni tahlil qilishda xatolik" });
+    }
+  });
+
+  router.get('/video/transcript', async (req, res) => {
+    try {
+      const videoId = String(req.query.videoId);
+      const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+      res.json(transcript);
+    } catch (error) {
+      console.error("YOUTUBE TRANSCRIPT ERROR:", error);
+      res.status(500).json({ error: "Subtitrlarni yuklab bo'lmadi" });
+    }
+  });
+
+  router.get('/video/vocab', async (req, res) => {
+    try {
+      const videoId = String(req.query.videoId);
+      const transcriptList = await YoutubeTranscript.fetchTranscript(videoId);
+      const fullText = transcriptList.map(t => t.text).join(' ');
+      const vocab = await AIService.extractVideoVocabulary(fullText, 5); // 5 words for demo
+      res.json(vocab);
+    } catch (error) {
+      console.error("YOUTUBE VOCAB ERROR:", error);
+      res.status(500).json({ error: "Lug'at ajratishda xatolik" });
     }
   });
 
