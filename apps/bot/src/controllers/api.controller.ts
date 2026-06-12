@@ -65,6 +65,75 @@ export function createApiRouter(bot: Bot<any>, channelUsername: string) {
     }
   });
 
+  router.get('/quizzes', async (req, res) => {
+    try {
+      const level = req.query.level ? String(req.query.level) : 'B1';
+      const quizData = await AIService.generateQuiz(level);
+      res.json(quizData);
+    } catch (error: any) {
+      console.error("QUIZ GENERATION ERROR:", error);
+      res.status(500).json({ error: "Testlarni yuklashda xatolik yuz berdi" });
+    }
+  });
+
+  router.get('/battles/matchmake', async (req, res) => {
+    try {
+      const level = req.query.level ? String(req.query.level) : 'B1';
+      const userId = req.query.userId ? Number(req.query.userId) : 0;
+      
+      const allUsers = dbManager.getAllUsers().filter(u => u.telegramId !== userId);
+      const opponent = allUsers.length > 0 
+        ? allUsers[Math.floor(Math.random() * allUsers.length)] 
+        : { telegramId: 0, firstName: "Mentory AI", xp: 500, league: 'Silver', wins: 10, losses: 5 };
+
+      const questions = await AIService.generateQuiz(level);
+      
+      const opponentScore = Math.floor(Math.random() * 4) + 1;
+
+      res.json({ opponent, questions, opponentScore });
+    } catch (error) {
+      console.error("MATCHMAKE ERROR:", error);
+      res.status(500).json({ error: "Jang uchun raqib topishda xatolik yuz berdi" });
+    }
+  });
+
+  router.post('/battles/complete', (req, res) => {
+    try {
+      const { userId, opponentId, userScore, opponentScore } = req.body;
+      const user = dbManager.getUser(Number(userId));
+      const opponent = dbManager.getUser(Number(opponentId));
+
+      if (!user) return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
+
+      const isWin = userScore > opponentScore;
+      const isDraw = userScore === opponentScore;
+
+      if (isWin) {
+        user.xp += 100;
+        user.wins = (user.wins || 0) + 1;
+        if (opponent) {
+          opponent.xp = Math.max(0, opponent.xp - 20);
+          opponent.losses = (opponent.losses || 0) + 1;
+        }
+      } else if (!isDraw) {
+        user.xp = Math.max(0, user.xp - 20);
+        user.losses = (user.losses || 0) + 1;
+        if (opponent) {
+          opponent.xp += 100;
+          opponent.wins = (opponent.wins || 0) + 1;
+        }
+      }
+
+      dbManager.updateUser(user);
+      if (opponent) dbManager.updateUser(opponent);
+
+      res.json({ success: true, profile: user });
+    } catch (error) {
+      console.error("BATTLE COMPLETE ERROR:", error);
+      res.status(500).json({ error: "Jang natijasini saqlashda xatolik" });
+    }
+  });
+
   router.post('/words', (req, res) => {
     try {
       const { userId, word, translation, sentence } = req.body;

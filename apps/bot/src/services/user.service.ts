@@ -28,6 +28,10 @@ export class UserService {
         isSubscribed: false,
         joinedAt: UserService.getTodayDate(),
         league: 'Bronze',
+        referrals: 0,
+        wins: 0,
+        losses: 0,
+        isPremium: false,
       });
     }
     return profile;
@@ -46,6 +50,10 @@ export class UserService {
         isSubscribed: true,
         joinedAt: UserService.getTodayDate(),
         league: 'Bronze',
+        referrals: 0,
+        wins: 0,
+        losses: 0,
+        isPremium: false,
       });
     }
     profile.xp += amount;

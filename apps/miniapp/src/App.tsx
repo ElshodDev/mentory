@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Star, Flame, BookOpen, Layers, Mic, Edit, Trophy, Sparkles } from 'lucide-react';
+import { Star, Flame, BookOpen, Layers, Mic, Edit, Trophy, Sparkles, Users, Target, Swords, Crown } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { apiService } from './services/api';
 
@@ -9,6 +9,10 @@ import { FlashcardsTab } from './components/FlashcardsTab';
 import { WritingTutorTab } from './components/WritingTutorTab';
 import { VoiceAITab } from './components/VoiceAITab';
 import { LeaderboardTab } from './components/LeaderboardTab';
+import { ReferralsTab } from './components/ReferralsTab';
+import { QuizzesTab } from './components/QuizzesTab';
+import { BattleTab } from './components/BattleTab';
+import { PremiumTab } from './components/PremiumTab';
 
 // Shared Types
 export interface UserProfile {
@@ -19,6 +23,7 @@ export interface UserProfile {
   streak: number;
   league: string;
   totalLessons: number;
+  referrals?: number;
 }
 
 export interface SavedWord {
@@ -31,7 +36,7 @@ export interface SavedWord {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'reading' | 'cards' | 'writing' | 'voice' | 'leaderboard'>('reading');
+  const [activeTab, setActiveTab] = useState<'reading' | 'cards' | 'writing' | 'voice' | 'leaderboard' | 'referrals' | 'quizzes' | 'battle' | 'premium'>('reading');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
@@ -111,6 +116,15 @@ export default function App() {
           </div>
           
           <div className="flex gap-2">
+            <button onClick={() => setActiveTab('premium')} className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-yellow-500/5 active:scale-95 transition-transform">
+              <Crown className="w-4 h-4 text-yellow-500" />
+            </button>
+            <button onClick={() => setActiveTab('battle')} className="flex items-center gap-1.5 bg-gradient-to-r from-rose-500/10 to-red-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-rose-500/5 active:scale-95 transition-transform">
+              <Swords className="w-4 h-4 text-rose-500" />
+            </button>
+            <button onClick={() => setActiveTab('referrals')} className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-cyan-500/5 active:scale-95 transition-transform">
+              <Users className="w-4 h-4 text-cyan-400" />
+            </button>
             <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-orange-500/5">
               <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
               <span className="font-extrabold text-sm text-orange-400">{profile?.streak || 0}</span>
@@ -168,7 +182,23 @@ export default function App() {
               onProfileUpdated={(p) => setProfile(p)} 
             />
           )}
+          {activeTab === 'quizzes' && (
+            <QuizzesTab 
+              telegramId={telegramId}
+              currentLevel={currentLevel.cefr}
+              onXpEarned={addXpPoints}
+            />
+          )}
+          {activeTab === 'battle' && (
+            <BattleTab 
+              telegramId={telegramId}
+              currentLevel={currentLevel.cefr}
+              onProfileUpdated={(p) => setProfile(p)}
+            />
+          )}
           {activeTab === 'leaderboard' && <LeaderboardTab />}
+          {activeTab === 'referrals' && <ReferralsTab telegramId={telegramId} referralsCount={profile?.referrals || 0} />}
+          {activeTab === 'premium' && <PremiumTab />}
         </AnimatePresence>
       </div>
 
@@ -191,6 +221,12 @@ export default function App() {
             <Edit className={`${activeTab === 'writing' ? 'w-6 h-6 stroke-[2.5px]' : 'w-6 h-6'}`} />
             <span className="text-[9px] font-bold uppercase tracking-wider">Writing</span>
             {activeTab === 'writing' && <div className="absolute -bottom-4 w-1 h-1 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]"></div>}
+          </button>
+
+          <button onClick={() => { try { WebApp.HapticFeedback.selectionChanged(); } catch(e){} setActiveTab('quizzes'); }} className={`flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === 'quizzes' ? 'text-indigo-400 scale-110' : 'text-slate-500 hover:text-slate-400'}`}>
+            <Target className={`${activeTab === 'quizzes' ? 'w-6 h-6 stroke-[2.5px]' : 'w-6 h-6'}`} />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Quizzes</span>
+            {activeTab === 'quizzes' && <div className="absolute -bottom-4 w-1 h-1 bg-indigo-400 rounded-full shadow-[0_0_8px_rgba(129,140,248,0.8)]"></div>}
           </button>
 
           <button onClick={() => { try { WebApp.HapticFeedback.selectionChanged(); } catch(e){} setActiveTab('voice'); }} className={`flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === 'voice' ? 'text-rose-400 scale-110' : 'text-slate-500 hover:text-slate-400'}`}>

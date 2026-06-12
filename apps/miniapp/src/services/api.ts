@@ -91,5 +91,27 @@ export const apiService = {
     });
     if (!res.ok) throw new Error('Writing chat error');
     return res.json();
+  },
+
+  async fetchQuizzes(level: string) {
+    const res = await fetch(`/api/quizzes?level=${level}`);
+    if (!res.ok) throw new Error('Quizzes fetch error');
+    return res.json();
+  },
+
+  async matchmakeBattle(userId: number, level: string) {
+    const res = await fetch(`/api/battles/matchmake?userId=${userId}&level=${level}`);
+    if (!res.ok) throw new Error('Matchmake error');
+    return res.json();
+  },
+
+  async completeBattle(userId: number, opponentId: number, userScore: number, opponentScore: number) {
+    const res = await fetch('/api/battles/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, opponentId, userScore, opponentScore })
+    });
+    if (!res.ok) throw new Error('Complete battle error');
+    return res.json();
   }
 };

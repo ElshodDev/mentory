@@ -38,7 +38,38 @@ async function checkSubscription(ctx: Context): Promise<boolean> {
 
 export async function handleStartCommand(ctx: any) {
   ctx.session.waitingFor = null;
+
+  // Check if this is a new user
+  const isNewUser = !dbManager.getUser(ctx.from!.id);
   const profile = UserService.getOrCreateUser(ctx.from!.id, ctx.from!.first_name, ctx.from!.username);
+
+  // Handle referrals
+  const payload = ctx.match;
+  if (isNewUser && payload && payload.startsWith('ref_')) {
+    const referrerId = parseInt(payload.replace('ref_', ''), 10);
+    if (!isNaN(referrerId) && referrerId !== ctx.from!.id) {
+      profile.referredBy = referrerId;
+      profile.xp += 500;
+      dbManager.updateUser(profile);
+      
+      const referrer = dbManager.getUser(referrerId);
+      if (referrer) {
+        referrer.referrals = (referrer.referrals || 0) + 1;
+        referrer.xp += 500;
+        dbManager.updateUser(referrer);
+        
+        try {
+          await ctx.api.sendMessage(
+            referrerId, 
+            `🎉 <b>Yangi do'st qo'shildi!</b>\nSizning taklif havolangiz orqali do'stingiz botga kirdi. Sizga <b>+500 XP</b> bonus taqdim etildi!`,
+            { parse_mode: 'HTML' }
+          );
+        } catch (e) {
+          console.error("Could not notify referrer:", e);
+        }
+      }
+    }
+  }
 
   // Onboarding (Darajani tanlash) faqat yangi foydalanuvchilarga
   if (profile.xp === 0 && profile.totalLessons === 0) {

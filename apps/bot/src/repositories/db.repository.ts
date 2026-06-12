@@ -12,6 +12,11 @@ export interface UserProfile {
   isSubscribed: boolean;
   joinedAt: string;
   league: string;
+  referrals?: number;
+  referredBy?: number;
+  wins?: number;
+  losses?: number;
+  isPremium?: boolean;
 }
 
 export interface SavedWord {

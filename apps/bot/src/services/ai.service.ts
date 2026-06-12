@@ -92,4 +92,28 @@ Keep all Uzbek explanations short, clear, and encouraging. Ensure the JSON is va
       };
     }
   }
+
+  static async generateQuiz(level: string): Promise<any> {
+    const prompt = `You are an expert English teacher. Create a short multiple-choice grammar and vocabulary quiz for an IELTS/CEFR student at ${level} level.
+You MUST return ONLY a raw JSON array of 5 questions (do not wrap in markdown code blocks). Use this structure:
+[
+  {
+    "question": "The sentence with a blank or the question text.",
+    "options": ["A) option 1", "B) option 2", "C) option 3", "D) option 4"],
+    "correctAnswer": 0, // index of the correct option (0-3)
+    "explanation": "Brief explanation in Uzbek why this is the correct answer."
+  }
+]`;
+
+    const result = await model.generateContent(prompt);
+    const resText = result.response.text().trim();
+    const cleanJson = resText.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+    
+    try {
+      return JSON.parse(cleanJson);
+    } catch (parseError) {
+      console.error("JSON PARSE ERROR on Quiz generation:", resText);
+      return [];
+    }
+  }
 }
