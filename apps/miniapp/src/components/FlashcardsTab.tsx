@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bookmark, RefreshCw, Volume2 } from 'lucide-react';
+import { Bookmark, RefreshCw, Volume2, Plus, X } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { apiService } from '../services/api';
 import { SavedWord } from '../App'; // We need to export SavedWord from App.tsx or shared types
@@ -15,6 +15,10 @@ export function FlashcardsTab({ telegramId, onXpEarned }: FlashcardsTabProps) {
   const [loadingWords, setLoadingWords] = useState(false);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newWord, setNewWord] = useState('');
+  const [newTranslation, setNewTranslation] = useState('');
+  const [newSentence, setNewSentence] = useState('');
 
   const fetchWords = async () => {
     setLoadingWords(true);
@@ -79,11 +83,79 @@ export function FlashcardsTab({ telegramId, onXpEarned }: FlashcardsTabProps) {
     }
   };
 
+  const handleManualAdd = async () => {
+    if (!newWord.trim() || !newTranslation.trim()) {
+      try { WebApp.showAlert("So'z va tarjimani kiriting!"); } catch(e){}
+      return;
+    }
+    try {
+      await apiService.saveWord(telegramId, newWord.trim(), newTranslation.trim(), newSentence.trim());
+      try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
+      setIsAdding(false);
+      setNewWord('');
+      setNewTranslation('');
+      setNewSentence('');
+      fetchWords();
+    } catch (e) {
+      try { WebApp.showAlert("Xatolik yuz berdi"); } catch(e){}
+    }
+  };
+
   return (
-    <motion.div key="cards" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-2 pb-24">
-      <h2 className="text-2xl font-black mb-1.5 flex items-center gap-2 tracking-tight">
-        <Bookmark className="text-indigo-400 w-6 h-6 stroke-[2.5px]" /> Lug'atim
-      </h2>
+    <motion.div key="cards" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-2 pb-24 px-2">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-black flex items-center gap-2 tracking-tight">
+          <Bookmark className="text-indigo-400 w-6 h-6 stroke-[2.5px]" /> Lug'atim
+        </h2>
+        <button 
+          onClick={() => setIsAdding(!isAdding)}
+          className="p-2 bg-indigo-500/20 text-indigo-400 rounded-full hover:bg-indigo-500/30 transition-all"
+        >
+          {isAdding ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {isAdding && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }} 
+            animate={{ opacity: 1, height: 'auto' }} 
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-6 overflow-hidden"
+          >
+            <div className="bg-[#121424] rounded-2xl p-4 border border-indigo-500/30 shadow-lg">
+              <h3 className="text-white font-bold mb-3 text-sm">Yangi so'z qo'shish</h3>
+              <input 
+                type="text" 
+                placeholder="Inglizcha so'z" 
+                value={newWord} 
+                onChange={e => setNewWord(e.target.value)} 
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white mb-2 text-sm outline-none focus:border-indigo-500/50" 
+              />
+              <input 
+                type="text" 
+                placeholder="Tarjimasi (o'zbekcha)" 
+                value={newTranslation} 
+                onChange={e => setNewTranslation(e.target.value)} 
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white mb-2 text-sm outline-none focus:border-indigo-500/50" 
+              />
+              <input 
+                type="text" 
+                placeholder="Misol gap (ixtiyoriy)" 
+                value={newSentence} 
+                onChange={e => setNewSentence(e.target.value)} 
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white mb-3 text-sm outline-none focus:border-indigo-500/50" 
+              />
+              <button 
+                onClick={handleManualAdd} 
+                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3.5 rounded-xl text-sm transition-all"
+              >
+                Lug'atga saqlash
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {loadingWords && words.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3 bg-white/5 rounded-3xl border border-white/5">
