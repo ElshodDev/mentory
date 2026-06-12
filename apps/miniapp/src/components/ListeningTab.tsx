@@ -22,6 +22,9 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
   const [selectedWord, setSelectedWord] = useState<{word: string, translation: string, sentence: string} | null>(null);
   const [addingWord, setAddingWord] = useState(false);
 
+  const [manualSearch, setManualSearch] = useState('');
+  const [isTranslating, setIsTranslating] = useState(false);
+
   const playerRef = useRef<any>(null);
   const timerRef = useRef<any>(null);
 
@@ -129,6 +132,27 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
     }
   };
 
+  const handleManualSearch = async () => {
+    if (!manualSearch.trim()) return;
+    if (playerRef.current) {
+      playerRef.current.pauseVideo();
+    }
+    setIsTranslating(true);
+    try {
+      const res = await apiService.translateWord(manualSearch, "YouTube video");
+      setSelectedWord({
+        word: manualSearch.trim(),
+        translation: res.translation || "Tarjima topilmadi",
+        sentence: "Video orqali kiritilgan so'z"
+      });
+      setManualSearch('');
+    } catch (e) {
+      try { WebApp.showAlert("Tarjima qilishda xatolik yuz berdi"); } catch(e){}
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   // Find current active caption
   const currentCaption = transcript.find(t => 
     currentTime >= t.offset && currentTime <= (t.offset + t.duration)
@@ -206,6 +230,24 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
                 {isPlaying ? "Matn kutilmoqda..." : "Videoni boshlang"}
               </p>
             )}
+          </div>
+
+          {/* MANUAL SEARCH */}
+          <div className="bg-[#121424] border border-white/10 rounded-2xl p-4 shadow-lg flex gap-2">
+            <input 
+              type="text" 
+              placeholder="Eshitgan so'zingizni yozing..." 
+              value={manualSearch}
+              onChange={(e) => setManualSearch(e.target.value)}
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-rose-500/50"
+            />
+            <button 
+              onClick={handleManualSearch}
+              disabled={isTranslating}
+              className="bg-rose-600 hover:bg-rose-500 disabled:opacity-50 px-4 py-3 rounded-xl font-bold text-white text-sm transition-all flex items-center justify-center min-w-[90px]"
+            >
+              {isTranslating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Tarjima"}
+            </button>
           </div>
 
           {/* PRE-TEACHING VOCAB */}
