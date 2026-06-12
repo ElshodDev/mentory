@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCw, Sparkles, Mic, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Sparkles, Mic, ChevronRight, CheckCircle2, Volume2 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { apiService } from '../services/api';
 
@@ -65,6 +65,15 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
       await apiService.saveWord(telegramId, word, translation, readingData?.text || '');
     } catch (e) {
       console.error("Error saving word:", e);
+    }
+  };
+
+  const speakWord = (word: string) => {
+    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
     }
   };
 
@@ -170,6 +179,12 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
                 <div className="text-[10px] text-indigo-400 font-extrabold uppercase tracking-wider mb-0.5">Lug'at va AI Tarjima</div>
                 <div className="text-lg font-extrabold text-white flex items-center gap-2">
                   {activeWordPopup.word}
+                  <button 
+                    onClick={() => speakWord(activeWordPopup.word)}
+                    className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-indigo-400 transition-colors"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
                   {activeWordPopup.type && (
                     <span className="bg-indigo-500/20 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded-md uppercase font-bold">
                       {activeWordPopup.type}

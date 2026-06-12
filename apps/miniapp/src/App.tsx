@@ -11,6 +11,7 @@ import { LeaderboardTab } from './components/LeaderboardTab';
 import { ReferralsTab } from './components/ReferralsTab';
 import { QuizzesTab } from './components/QuizzesTab';
 import { BattleTab } from './components/BattleTab';
+import { Onboarding } from './components/Onboarding';
 import { PremiumTab } from './components/PremiumTab';
 import { ShadowingTab } from './components/ShadowingTab';
 import { MockTestTab } from './components/MockTestTab';
@@ -27,6 +28,7 @@ export interface UserProfile {
   league: string;
   totalLessons: number;
   referrals?: number;
+  englishLevel?: string;
 }
 
 export interface SavedWord {
@@ -43,6 +45,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [startVideoId, setStartVideoId] = useState<string | undefined>(undefined);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Get Telegram WebApp user or mock
   const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
@@ -63,6 +66,9 @@ export default function App() {
 
   useEffect(() => {
     fetchProfile();
+    if (!localStorage.getItem('mentory_onboarding')) {
+      setShowOnboarding(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -106,7 +112,10 @@ export default function App() {
     return         { level: 6, title: 'Advanced',      emoji: '💎', cefr: 'C2' };
   };
 
-  const currentLevel = profile ? getLevelInfo(profile.xp) : { level: 1, title: 'Beginner', emoji: '🌱', cefr: 'A1' };
+  const currentLevel = profile ? {
+    ...getLevelInfo(profile.xp),
+    cefr: profile.englishLevel || getLevelInfo(profile.xp).cefr
+  } : { level: 1, title: 'Beginner', emoji: '🌱', cefr: 'A1' };
 
   if (loadingProfile) {
     return (
@@ -120,6 +129,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#090a12] text-white font-sans overflow-x-hidden selection:bg-indigo-500/30">
+      {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
+      
       {/* Background Gradients */}
       <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none z-0"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/10 blur-[120px] pointer-events-none z-0"></div>

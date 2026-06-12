@@ -20,6 +20,16 @@ export function FlashcardsTab({ telegramId, onXpEarned }: FlashcardsTabProps) {
   const [newTranslation, setNewTranslation] = useState('');
   const [newSentence, setNewSentence] = useState('');
 
+  const speakWord = (word: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   const fetchWords = async () => {
     setLoadingWords(true);
     const cached = localStorage.getItem(`mentory_words_${telegramId}`);
@@ -49,16 +59,6 @@ export function FlashcardsTab({ telegramId, onXpEarned }: FlashcardsTabProps) {
   useEffect(() => {
     fetchWords();
   }, [telegramId]);
-
-  const speakWord = (word: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(word);
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
-    }
-  };
 
   const handleReview = async (difficulty: 'easy' | 'hard') => {
     if (words.length === 0) return;

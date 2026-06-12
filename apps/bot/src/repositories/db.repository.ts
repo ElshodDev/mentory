@@ -18,6 +18,7 @@ export interface UserProfile {
   wins?: number;
   losses?: number;
   isPremium?: boolean;
+  englishLevel?: string; // e.g. A1, A2, B1, B2, C1, IELTS
 }
 
 export interface SavedWord {
@@ -58,6 +59,7 @@ const UserSchema = new Schema<UserProfile>({
   wins: { type: Number, default: 0 },
   losses: { type: Number, default: 0 },
   isPremium: { type: Boolean, default: false },
+  englishLevel: { type: String, default: 'Intermediate' }
 });
 
 const WordSchema = new Schema<SavedWord>({

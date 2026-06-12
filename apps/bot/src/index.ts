@@ -194,8 +194,8 @@ app.listen(3000, () => {
   console.log('✅ Express API server 3000-portda ishga tushdi!');
 });
 
-// ─── Daily Streak Reminder (Runs every day at 19:00) ────────────────────────
-cron.schedule('0 19 * * *', async () => {
+// ─── Daily Streak Reminder (Runs every day at 20:00) ────────────────────────
+cron.schedule('0 20 * * *', async () => {
   try {
     const today = UserService.getTodayDate();
     const users = await dbManager.getLeaderboard(100000); // gets all mostly

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Search, Video, PlusCircle, Sparkles } from 'lucide-react';
+import { Loader2, Search, Video, PlusCircle, Sparkles, Volume2 } from 'lucide-react';
 import YouTube, { YouTubeProps } from 'react-youtube';
 import WebApp from '@twa-dev/sdk';
 import { apiService } from '../services/api';
@@ -95,6 +95,15 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
 
   const stopTimer = () => {
     clearInterval(timerRef.current);
+  };
+
+  const speakWord = (word: string) => {
+    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   const handleWordClick = async (word: string, currentSentence: string) => {
@@ -282,6 +291,12 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#1a1c2e] border border-white/10 p-6 rounded-3xl shadow-2xl w-full max-w-sm text-center">
             <h3 className="text-3xl font-black text-white mb-1 flex justify-center items-center gap-2">
               {selectedWord.word}
+              <button 
+                onClick={() => speakWord(selectedWord.word)}
+                className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-indigo-400 transition-colors"
+              >
+                <Volume2 className="w-5 h-5" />
+              </button>
             </h3>
             {selectedWord.type && (
               <span className="inline-block bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-0.5 rounded-md uppercase font-bold mb-2">

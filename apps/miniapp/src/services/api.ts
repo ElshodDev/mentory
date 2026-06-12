@@ -69,6 +69,16 @@ export const apiService = {
     return res.json();
   },
 
+  async updateUserLevel(userId: number, level: string) {
+    const res = await fetch(`${BASE_URL}/api/user/level`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, level })
+    });
+    if (!res.ok) throw new Error('Level update error');
+    return res.json();
+  },
+
   async fetchLeaderboard() {
     const res = await fetch(`${BASE_URL}/api/leaderboard`);
     if (!res.ok) throw new Error('Leaderboard fetch error');

@@ -345,6 +345,25 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
     }
   });
 
+  router.post('/user/level', async (req, res) => {
+    try {
+      const { userId, level } = req.body;
+      if (!userId || !level) {
+        return res.status(400).json({ error: "Missing fields" });
+      }
+      const user = await dbManager.getUser(Number(userId));
+      if (user) {
+        user.englishLevel = level;
+        await dbManager.updateUser(user);
+        res.json(user);
+      } else {
+        res.status(404).json({ error: "User not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Level update failed" });
+    }
+  });
+
   router.post('/writing', async (req, res) => {
     try {
       const { message } = req.body;

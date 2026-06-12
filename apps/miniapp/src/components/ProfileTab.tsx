@@ -1,13 +1,19 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { UserProfile } from '../App';
-import { Flame, Trophy, Users, BookOpen, Crown, Zap, Shield, Medal } from 'lucide-react';
+import { Flame, Trophy, Users, BookOpen, Crown, Zap, Shield, Medal, Loader2, ChevronDown } from 'lucide-react';
+import { apiService } from '../services/api';
+import WebApp from '@twa-dev/sdk';
 
 interface ProfileTabProps {
   profile: UserProfile | null;
+  onProfileUpdated: (p: UserProfile) => void;
 }
 
-export function ProfileTab({ profile }: ProfileTabProps) {
+export function ProfileTab({ profile, onProfileUpdated }: ProfileTabProps) {
   if (!profile) return null;
+  
+  const [updatingLevel, setUpdatingLevel] = useState(false);
 
   const getLevelInfo = (xp: number) => {
     if (xp < 100)  return { level: 1, title: 'Beginner',     emoji: '🌱', cefr: 'A1', nextXp: 100 };
@@ -102,6 +108,44 @@ export function ProfileTab({ profile }: ProfileTabProps) {
           )}
         </div>
       </motion.div>
+
+      {/* English Level Selector */}
+      <div className="glassmorphism p-5 rounded-3xl relative overflow-hidden">
+        <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center justify-between">
+          <span>Sizning Ingliz Tili Darajangiz</span>
+          {updatingLevel && <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />}
+        </h3>
+        <div className="relative">
+          <select 
+            value={profile.englishLevel || 'Intermediate'}
+            disabled={updatingLevel}
+            onChange={async (e) => {
+              setUpdatingLevel(true);
+              try {
+                const updated = await apiService.updateUserLevel(profile.telegramId, e.target.value);
+                onProfileUpdated(updated);
+                try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
+              } catch(err) {
+                WebApp.showAlert("Darajani saqlashda xatolik yuz berdi");
+              } finally {
+                setUpdatingLevel(false);
+              }
+            }}
+            className="w-full bg-[#121424] border border-white/10 rounded-2xl p-4 text-white font-bold appearance-none outline-none focus:border-indigo-500/50 transition-colors"
+          >
+            <option value="Beginner">Beginner (A1)</option>
+            <option value="Pre-Intermediate">Pre-Intermediate (A2-B1)</option>
+            <option value="Intermediate">Intermediate (B1-B2)</option>
+            <option value="Upper-Intermediate">Upper-Intermediate (B2)</option>
+            <option value="Advanced">Advanced (C1)</option>
+            <option value="IELTS">IELTS 6.0+ (Academic)</option>
+          </select>
+          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+        </div>
+        <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
+          Ushbu daraja orqali AI sizga aynan mos keladigan o'qish matnlari va testlarni tayyorlaydi.
+        </p>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4">
