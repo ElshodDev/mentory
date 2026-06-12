@@ -341,7 +341,7 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
               initial={{ y: 300, opacity: 0 }} 
               animate={{ y: 0, opacity: 1 }} 
               exit={{ y: 300, opacity: 0 }}
-              className="bg-[#121424] w-full rounded-t-3xl border-t border-white/10 p-6 shadow-2xl relative"
+              className="bg-[#121424] w-full max-h-[85vh] overflow-y-auto rounded-t-3xl border-t border-white/10 p-6 pb-24 shadow-2xl relative"
             >
               <button 
                 onClick={() => setShowCustomModal(false)}
