@@ -16,16 +16,21 @@ export function MockTestTab({ telegramId, onProfileUpdated }: MockTestTabProps) 
   const [stage, setStage] = useState<'intro' | 'part1_q1' | 'part1_q2' | 'part2_prep' | 'part2_speak' | 'part3_q1' | 'part3_q2' | 'evaluating' | 'result'>('intro');
   const [isRecording, setIsRecording] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [recordingTime, setRecordingTime] = useState(0);
   const [result, setResult] = useState<any>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const allAudioBase64 = useRef<string[]>([]);
   const timerRef = useRef<any>(null);
+  const recordingTimerRef = useRef<any>(null);
 
   useEffect(() => {
     loadQuestions();
-    return () => clearInterval(timerRef.current);
+    return () => {
+      clearInterval(timerRef.current);
+      clearInterval(recordingTimerRef.current);
+    };
   }, []);
 
   const loadQuestions = async () => {
@@ -73,17 +78,30 @@ export function MockTestTab({ telegramId, onProfileUpdated }: MockTestTabProps) 
 
       mediaRecorder.start();
       setIsRecording(true);
+      setRecordingTime(0);
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          // Auto stop part 2 speaking after 2 minutes
+          if (stage === 'part2_speak' && prev >= 119) {
+            stopRecording();
+            return 120;
+          }
+          return prev + 1;
+        });
+      }, 1000);
       try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
     } catch (error) {
-      WebApp.showAlert("Mikrofonga ruxsat berilmadi!");
+      WebApp.showAlert("Mikrofonga ruxsat berilmadi yoki xatolik yuz berdi!");
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
-      setIsRecording(false);
     }
+    setIsRecording(false);
+    clearInterval(recordingTimerRef.current);
   };
 
   const handleNextStage = () => {
@@ -184,10 +202,12 @@ export function MockTestTab({ telegramId, onProfileUpdated }: MockTestTabProps) 
         <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="flex flex-col items-center">
           <div className="bg-[#1a1c2e] border border-purple-500/20 rounded-3xl p-6 w-full text-center mb-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl"></div>
-            <span className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-2 block">
-              {stage.includes('part1') ? 'Part 1: Introduction' : stage.includes('part3') ? 'Part 3: Discussion' : 'Part 2: Speak'}
-            </span>
-            <p className="text-xl font-bold text-white mb-6">
+            
+            <h3 className="text-2xl font-black text-purple-400 mb-4 bg-purple-500/10 inline-block px-4 py-1.5 rounded-full border border-purple-500/20">
+              {stage.includes('part1') ? 'Part 1: Introduction' : stage.includes('part3') ? 'Part 3: Discussion' : 'Part 2: Speaking'}
+            </h3>
+            
+            <p className="text-xl font-bold text-white mb-6 leading-relaxed">
               {stage === 'part1_q1' && questions.part1[0]}
               {stage === 'part1_q2' && questions.part1[1]}
               {stage === 'part3_q1' && questions.part3[0]}
@@ -206,15 +226,23 @@ export function MockTestTab({ telegramId, onProfileUpdated }: MockTestTabProps) 
 
             <button
               onClick={isRecording ? stopRecording : startRecording}
-              className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center transition-all ${
+              className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center transition-all ${
                 isRecording 
-                  ? 'bg-rose-500/20 border-2 border-rose-500 shadow-[0_0_30px_rgba(225,29,72,0.5)] animate-pulse' 
+                  ? 'bg-rose-500/20 border-2 border-rose-500 shadow-[0_0_30px_rgba(225,29,72,0.5)] animate-pulse scale-105' 
                   : 'bg-purple-600 hover:bg-purple-500 shadow-[0_0_20px_rgba(147,51,234,0.4)]'
               }`}
             >
-              {isRecording ? <Square className="w-8 h-8 text-rose-500 fill-rose-500" /> : <Mic className="w-8 h-8 text-white" />}
+              {isRecording ? <Square className="w-10 h-10 text-rose-500 fill-rose-500" /> : <Mic className="w-10 h-10 text-white" />}
             </button>
-            <p className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
+            
+            {isRecording && (
+              <div className="mt-6 text-4xl font-black tabular-nums text-rose-400">
+                {formatTime(recordingTime)}
+                {stage === 'part2_speak' && <span className="text-xl text-rose-400/50"> / 2:00</span>}
+              </div>
+            )}
+            
+            <p className="mt-4 text-sm font-bold text-slate-400 uppercase tracking-widest">
               {isRecording ? 'Yozilmoqda... (Tugatish tugmasini bosing)' : 'Javob berishni boshlash'}
             </p>
           </div>
