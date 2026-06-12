@@ -11,6 +11,7 @@ export interface UserProfile {
   totalLessons: number;
   isSubscribed: boolean;
   joinedAt: string;
+  league: string;
 }
 
 export interface SavedWord {

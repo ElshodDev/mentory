@@ -13,6 +13,7 @@ interface UserProfile {
   totalLessons: number;
   isSubscribed: boolean;
   joinedAt: string;
+  league?: string;
 }
 
 interface SavedWord {
@@ -125,6 +126,18 @@ export default function App() {
     fetchProfile();
   }, []);
 
+  // Theme Sync & Init
+  useEffect(() => {
+    try {
+      WebApp.ready();
+      WebApp.expand();
+      WebApp.setHeaderColor('#090a12');
+      WebApp.setBackgroundColor('#090a12');
+    } catch (e) {
+      console.error("WebApp init error:", e);
+    }
+  }, []);
+
   // Map XP to Level
   const getLevelInfo = (xp: number) => {
     if (xp < 100)  return { level: 1, title: 'Beginner',     emoji: '🌱', cefr: 'A1' };
@@ -150,11 +163,18 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setReadingData(data);
+        localStorage.setItem('mentory_last_reading', JSON.stringify(data));
         // Generate summary placeholder/prompt
         setAiSummary(`Ushbu matnda "${data.title}" mavzusi, ya'ni darajangizga mos asosiy ingliz tili tushunchalari va yangi iboralar o'rganilishi haqida so'z boradi.`);
       }
     } catch (e) {
       console.error("Error loading reading passage:", e);
+      const cached = localStorage.getItem('mentory_last_reading');
+      if (cached) {
+        const data = JSON.parse(cached);
+        setReadingData(data);
+        setAiSummary(`Ushbu matnda "${data.title}" mavzusi, ya'ni darajangizga mos asosiy ingliz tili tushunchalari va yangi iboralar o'rganilishi haqida so'z boradi.`);
+      }
     } finally {
       setLoadingReading(false);
     }
@@ -162,7 +182,12 @@ export default function App() {
 
   useEffect(() => {
     if (activeTab === 'reading' && !readingData) {
-      fetchNewReading();
+      const cached = localStorage.getItem('mentory_last_reading');
+      if (cached) {
+        setReadingData(JSON.parse(cached));
+      } else {
+        fetchNewReading();
+      }
     }
   }, [activeTab, readingData]);
 
@@ -411,6 +436,13 @@ export default function App() {
   // ─── FLASHCARDS LOGIC ──────────────────────────────────────────────────────
   const fetchWords = async () => {
     setLoadingWords(true);
+    
+    // Check cache first for instant display
+    const cached = localStorage.getItem(`mentory_words_${telegramId}`);
+    if (cached) {
+      setWords(JSON.parse(cached));
+    }
+
     try {
       const res = await fetch(`/api/words/${telegramId}`);
       if (res.ok) {
@@ -423,6 +455,7 @@ export default function App() {
           return a.nextReviewDate.localeCompare(b.nextReviewDate);
         });
         setWords(sorted);
+        localStorage.setItem(`mentory_words_${telegramId}`, JSON.stringify(sorted));
         setCurrentCardIndex(0);
         setShowAnswer(false);
       }
@@ -438,6 +471,16 @@ export default function App() {
       fetchWords();
     }
   }, [activeTab]);
+
+  const speakWord = (word: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   const handleReview = async (difficulty: 'easy' | 'hard') => {
     if (words.length === 0) return;
@@ -820,9 +863,20 @@ export default function App() {
                     </p>
                     
                     {/* Card Body */}
-                    <div 
+                    <motion.div 
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      onDragEnd={(e, { offset }) => {
+                        const swipe = offset.x;
+                        if (swipe < -80) {
+                          handleReview('hard');
+                        } else if (swipe > 80) {
+                          handleReview('easy');
+                        }
+                      }}
+                      whileDrag={{ scale: 1.05 }}
                       onClick={() => setShowAnswer(!showAnswer)}
-                      className="w-full min-h-[220px] bg-[#121424] hover:bg-[#15172b] cursor-pointer rounded-3xl border border-indigo-500/20 flex flex-col items-center justify-center p-6 relative overflow-hidden shadow-2xl transition-all active:scale-98"
+                      className="w-full min-h-[220px] bg-[#121424] hover:bg-[#15172b] cursor-pointer rounded-3xl border border-indigo-500/20 flex flex-col items-center justify-center p-6 relative overflow-hidden shadow-2xl transition-all active:scale-98 touch-none"
                     >
                       <div className="absolute top-4 right-4 text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-white/5 text-slate-400 border border-white/5">
                         {currentCardIndex + 1} / {words.length}
@@ -830,9 +884,17 @@ export default function App() {
 
                       <Bookmark className="w-8 h-8 text-indigo-500/80 mb-3" />
                       
-                      <h3 className="text-3xl font-black text-white tracking-wide mb-1">
-                        {words[currentCardIndex].word}
-                      </h3>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="text-3xl font-black text-white tracking-wide">
+                          {words[currentCardIndex].word}
+                        </h3>
+                        <button 
+                          onClick={(e) => speakWord(words[currentCardIndex].word, e)}
+                          className="p-2 rounded-full bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-all active:scale-95"
+                        >
+                          <Volume2 className="w-5 h-5" />
+                        </button>
+                      </div>
                       
                       <p className="text-xs text-indigo-400 font-semibold mb-4">
                         Review interval: {words[currentCardIndex].interval} kun
@@ -858,7 +920,7 @@ export default function App() {
                           </p>
                         )}
                       </AnimatePresence>
-                    </div>
+                    </motion.div>
 
                     {/* Review Action Buttons */}
                     <div className="flex gap-4 mt-5">
@@ -1205,8 +1267,17 @@ export default function App() {
                             }`}>{i + 1}</span>
                             <div>
                               <span className="text-sm font-extrabold text-white">{u.firstName}</span>
-                              <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
-                                {lvlInfo.emoji} {lvlInfo.title}
+                              <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5 mt-0.5">
+                                <span>{lvlInfo.emoji} {lvlInfo.title}</span>
+                                {u.league && (
+                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-widest border ${
+                                    u.league === 'Gold' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                    u.league === 'Silver' ? 'bg-slate-300/10 text-slate-300 border-slate-300/20' :
+                                    'bg-amber-600/10 text-amber-600 border-amber-600/20'
+                                  }`}>
+                                    {u.league}
+                                  </span>
+                                )}
                               </span>
                             </div>
                           </div>

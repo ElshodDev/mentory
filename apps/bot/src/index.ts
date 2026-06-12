@@ -4,6 +4,7 @@ import path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import express from 'express';
 import cors from 'cors';
+import cron from 'node-cron';
 import { dbManager, UserProfile as DbUserProfile } from './db';
 import { handleWritingQuery } from './handlers/writing.handler';
 import { WRITING_TUTOR_PROMPT } from './prompts/writing-tutor.prompt';
@@ -51,6 +52,7 @@ function getOrCreateUser(ctx: MyContext): UserProfile {
       totalLessons: 0,
       isSubscribed: false,
       joinedAt: getTodayDate(),
+      league: 'Bronze',
     });
   }
   return profile;
@@ -68,6 +70,7 @@ function addXP(userId: number, amount: number): UserProfile {
       totalLessons: 0,
       isSubscribed: true,
       joinedAt: getTodayDate(),
+      league: 'Bronze',
     });
   }
   profile.xp += amount;
@@ -140,6 +143,23 @@ bot.command('start', async (ctx) => {
   ctx.session.waitingFor = null;
   const profile = getOrCreateUser(ctx);
 
+  // Onboarding (Darajani tanlash) faqat yangi foydalanuvchilarga
+  if (profile.xp === 0 && profile.totalLessons === 0) {
+    await ctx.reply(
+      `🎉 <b>Mentory AI</b> ga xush kelibsiz, <b>${ctx.from!.first_name}</b>!\n\n` +
+      `Sizga mos darsliklarni tanlashim uchun, iltimos, ingliz tili darajangizni belgilang. ` +
+      `Tanlovingizga qarab sizga boshlang'ich bonus XP taqdim etiladi!`,
+      {
+        parse_mode: 'HTML',
+        reply_markup: new InlineKeyboard()
+          .text('🌱 Beginner (A1-A2)', 'onboard_a1').row()
+          .text('📘 Intermediate (B1-B2)', 'onboard_b1').row()
+          .text('🏆 Advanced (C1-C2)', 'onboard_c1')
+      }
+    );
+    return;
+  }
+
   // Obuna tekshiruv (faqat 1 ta dars tugatgandan keyin so'raladi)
   if (profile.totalLessons >= 1) {
     const isSubscribed = await checkSubscription(ctx);
@@ -167,6 +187,35 @@ bot.command('start', async (ctx) => {
     `⚡ XP: <b>${profile.xp}</b>\n` +
     `🔥 Streak: <b>${profile.streak} kun</b>\n` +
     `📝 Jami darslar: <b>${profile.totalLessons}</b>\n\n` +
+    `Quyidan kerakli bo'limni tanlang:`,
+    { parse_mode: 'HTML', reply_markup: mainMenuKeyboard() }
+  );
+});
+
+// Onboarding Callback handlers
+bot.callbackQuery(/onboard_(a1|b1|c1)/, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const data = ctx.callbackQuery.data;
+  let bonusXp = 0;
+  let league = 'Bronze';
+  
+  if (data === 'onboard_a1') { bonusXp = 50; league = 'Bronze'; }
+  if (data === 'onboard_b1') { bonusXp = 350; league = 'Silver'; }
+  if (data === 'onboard_c1') { bonusXp = 1050; league = 'Gold'; }
+
+  const profile = getOrCreateUser(ctx);
+  profile.xp += bonusXp;
+  profile.league = league;
+  dbManager.updateUser(profile);
+
+  const lvl = getLevel(profile.xp);
+
+  await ctx.editMessageText(
+    `✅ Daraja qabul qilindi!\n\n` +
+    `🎉 Sizga <b>+${bonusXp} XP</b> bonus berildi va siz <b>${league} League</b> ga qo'shildingiz!\n\n` +
+    `📊 Hozirgi holatingiz:\n` +
+    `${lvl.emoji} Daraja: <b>${lvl.title}</b> (Level ${lvl.level})\n` +
+    `⚡ XP: <b>${profile.xp}</b>\n\n` +
     `Quyidan kerakli bo'limni tanlang:`,
     { parse_mode: 'HTML', reply_markup: mainMenuKeyboard() }
   );
@@ -633,7 +682,8 @@ app.get('/api/profile/:id', async (req, res) => {
       lastActiveDate: new Date().toISOString().split('T')[0],
       totalLessons: 0,
       isSubscribed: false,
-      joinedAt: new Date().toISOString().split('T')[0]
+      joinedAt: new Date().toISOString().split('T')[0],
+      league: 'Bronze'
     });
   } else {
     // If they have >= 1 lesson, verify if they are actually subscribed
@@ -885,24 +935,15 @@ app.listen(3000, () => {
   console.log('✅ Express API server 3000-portda ishga tushdi!');
 });
 
-// ─── Daily Streak Reminder (Runs every 1 hour) ──────────────────────────────
-let notifiedUsersToday = new Set<number>();
-let currentNotifiedDay = new Date().toISOString().split('T')[0];
-
-setInterval(async () => {
+// ─── Daily Streak Reminder (Runs every day at 19:00) ────────────────────────
+cron.schedule('0 19 * * *', async () => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    if (today !== currentNotifiedDay) {
-      notifiedUsersToday.clear();
-      currentNotifiedDay = today;
-    }
-    
     const users = dbManager.getAllUsers();
+    
     for (const u of users) {
-      if (notifiedUsersToday.has(u.telegramId)) continue;
-      
-      // If user hasn't studied today and wasn't active today
-      if (u.lastActiveDate && u.lastActiveDate !== today) {
+      // If user hasn't studied today and is subscribed
+      if (u.lastActiveDate && u.lastActiveDate !== today && u.isSubscribed) {
         try {
           const lvl = getLevel(u.xp);
           await bot.api.sendMessage(
@@ -919,16 +960,15 @@ setInterval(async () => {
               reply_markup: new InlineKeyboard().webApp('🚀 Mentory Mini App', MINI_APP_URL)
             }
           );
-          notifiedUsersToday.add(u.telegramId);
         } catch (err) {
           // Silent catch for blocked users/other issues
         }
       }
     }
   } catch (error) {
-    console.error("Reminder check failed:", error);
+    console.error("Reminder cron failed:", error);
   }
-}, 1000 * 60 * 60); // Every 1 hour
+});
 
 // ─── Botni ishga tushirish ─────────────────────────────────────────────────
 bot.start({
