@@ -261,7 +261,14 @@ Do not wrap in markdown code blocks.`;
     const prompt = `Generate a standard IELTS Speaking test.
 Return ONLY raw JSON matching this structure exactly:
 {
-  "part1": ["Question 1 about hometown?", "Question 2 about hobbies?"],
+  "part1_1": {
+    "topic": "Work or Study",
+    "questions": ["Question 1 about work/study?", "Question 2 about work/study?"]
+  },
+  "part1_2": {
+    "topic": "A daily life topic (e.g., Hobbies, Food, Weather)",
+    "questions": ["Question 1?", "Question 2?"]
+  },
   "part2": {
     "topic": "Describe a book you read recently.",
     "bulletPoints": ["What the book is", "When you read it", "What it is about", "And explain why you liked it"]
