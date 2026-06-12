@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { RefreshCw, Sparkles, Mic, ChevronRight, CheckCircle2, Volume2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { RefreshCw, Sparkles, Mic, ChevronRight, CheckCircle2, Volume2, Plus, Image, Upload } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { apiService } from '../services/api';
 
@@ -24,6 +24,13 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [activeWordPopup, setActiveWordPopup] = useState<{ word: string; trans: string; isTranslating?: boolean; type?: string } | null>(null);
   const [aiSummary, setAiSummary] = useState<string>('');
+
+  // Custom reading states
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customText, setCustomText] = useState('');
+  const [customImage, setCustomImage] = useState<File | null>(null);
+  const [customImagePreview, setCustomImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchNewReading = async () => {
     setLoadingReading(true);
@@ -74,6 +81,51 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
       const utterance = new SpeechSynthesisUtterance(word);
       utterance.lang = 'en-US';
       window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleCustomSubmit = async () => {
+    if (!customText && !customImage) {
+      WebApp.showAlert("Iltimos, matn kiriting yoki rasm yuklang!");
+      return;
+    }
+
+    setLoadingReading(true);
+    setShowCustomModal(false);
+    setReadingStep('text');
+    setSelectedWords([]);
+    setActiveWordPopup(null);
+    try {
+      let base64Image: string | undefined;
+      let mimeType: string | undefined;
+
+      if (customImage) {
+        const buffer = await customImage.arrayBuffer();
+        base64Image = Buffer.from(buffer).toString('base64');
+        mimeType = customImage.type;
+      }
+
+      const data = await apiService.generateCustomReading(telegramId, customText, base64Image, mimeType);
+      setReadingData(data);
+      setAiSummary(`Ushbu shaxsiy matnda "${data.title}" mavzusi yoritilgan.`);
+    } catch (e) {
+      console.error("Custom reading error:", e);
+      WebApp.showAlert("Matnni o'qishda xatolik yuz berdi. Boshqa matn/rasm ko'ring.");
+    } finally {
+      setLoadingReading(false);
+      setCustomText('');
+      setCustomImage(null);
+      setCustomImagePreview(null);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCustomImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setCustomImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
     }
   };
 
@@ -137,13 +189,21 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
           <span className="text-[10px] uppercase tracking-widest text-indigo-400 font-extrabold px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20">
             Smart Reading
           </span>
-          <button 
-            onClick={fetchNewReading}
-            disabled={loadingReading}
-            className="p-2 hover:bg-white/5 active:scale-95 transition-all text-slate-400 hover:text-white rounded-xl border border-white/5 bg-white/5 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loadingReading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowCustomModal(true)}
+              className="p-2 hover:bg-white/5 active:scale-95 transition-all text-slate-400 hover:text-white rounded-xl border border-white/5 bg-white/5 flex items-center gap-1 text-xs font-bold"
+            >
+              <Plus className="w-4 h-4" /> Matn
+            </button>
+            <button 
+              onClick={fetchNewReading}
+              disabled={loadingReading}
+              className="p-2 hover:bg-white/5 active:scale-95 transition-all text-slate-400 hover:text-white rounded-xl border border-white/5 bg-white/5 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingReading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
         <h2 className="text-2xl font-black mt-2 tracking-tight">
           {loadingReading ? "Yangi mavzu qidirilmoqda..." : (readingData?.title || "AI & Modern Education")}
@@ -272,6 +332,68 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
           )}
         </>
       )}
+
+      {/* Custom Reading Modal */}
+      <AnimatePresence>
+        {showCustomModal && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ y: 300, opacity: 0 }} 
+              animate={{ y: 0, opacity: 1 }} 
+              exit={{ y: 300, opacity: 0 }}
+              className="bg-[#121424] w-full rounded-t-3xl border-t border-white/10 p-6 shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setShowCustomModal(false)}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-white/5 rounded-full"
+              >
+                ✕
+              </button>
+              
+              <h3 className="text-xl font-black mb-4">Shaxsiy matn qo'shish</h3>
+              
+              <textarea 
+                value={customText}
+                onChange={e => setCustomText(e.target.value)}
+                placeholder="Matnni shu yerga tashlang yoki yozing..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white mb-4 outline-none focus:border-indigo-500 min-h-[120px]"
+              />
+
+              <div className="flex gap-4 mb-6">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  ref={fileInputRef} 
+                  onChange={handleImageChange}
+                  className="hidden" 
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 py-3 bg-indigo-500/10 text-indigo-400 font-bold rounded-xl border border-indigo-500/20 flex items-center justify-center gap-2"
+                >
+                  <Image className="w-5 h-5" /> Rasm yuklash
+                </button>
+              </div>
+
+              {customImagePreview && (
+                <div className="mb-6 relative rounded-xl overflow-hidden border border-white/10 h-32 w-full">
+                  <img src={customImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center font-bold text-white">
+                    Rasm tanlandi
+                  </div>
+                </div>
+              )}
+
+              <button 
+                onClick={handleCustomSubmit}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-black py-4 rounded-xl flex items-center justify-center gap-2"
+              >
+                O'qishni boshlash <ChevronRight className="w-5 h-5" />
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

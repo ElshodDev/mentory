@@ -45,6 +45,48 @@ Do not include any markdown formatting, backticks, or text before/after the JSON
     return JSON.parse(cleanJson);
   }
 
+  static async generateCustomReading(text?: string, imageBase64?: string, mimeType?: string): Promise<any> {
+    let rawText = text || '';
+    if (imageBase64) {
+      const prompt = `Extract all English text from this image as accurately as possible. Fix obvious OCR scanning mistakes if any, but keep the original meaning intact. Output ONLY the extracted text, no commentary.`;
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: imageBase64,
+            mimeType: mimeType || "image/jpeg"
+          }
+        }
+      ]);
+      rawText = result.response.text().trim();
+    }
+
+    if (!rawText || rawText.length < 5) {
+      throw new Error("Matn topilmadi yoki juda qisqa.");
+    }
+
+    const structurePrompt = `I have the following English text:
+"${rawText}"
+
+Please clean it up slightly if it has broken newlines, and provide a short suitable title for it. 
+You must return ONLY a JSON object with this exact structure:
+{
+  "title": "A short title",
+  "text": "The cleaned up text",
+  "hardWords": []
+}
+Do not include any markdown formatting, backticks, or text before/after the JSON.`;
+
+    const result = await model.generateContent(structurePrompt);
+    const resText = result.response.text().trim();
+    const cleanJson = resText.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+    try {
+      return JSON.parse(cleanJson);
+    } catch(e) {
+      return { title: "Custom Reading", text: rawText, hardWords: [] };
+    }
+  }
+
   static async chatWithWritingTutor(message: string): Promise<string> {
     const writingModel = genAI.getGenerativeModel({
       model: 'gemini-flash-latest',

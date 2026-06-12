@@ -67,6 +67,20 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
     }
   });
 
+  router.post('/reading/custom', async (req, res) => {
+    try {
+      const { text, imageBase64, mimeType } = req.body;
+      if (!text && !imageBase64) {
+        return res.status(400).json({ error: "Matn yoki rasm yuborilmadi" });
+      }
+      const readingData = await AIService.generateCustomReading(text, imageBase64, mimeType);
+      res.json(readingData);
+    } catch (error: any) {
+      console.error("CUSTOM READING GENERATION ERROR:", error);
+      res.status(500).json({ error: "Shaxsiy matnni o'qishda xatolik yuz berdi" });
+    }
+  });
+
   router.get('/quizzes', async (req, res) => {
     try {
       const level = req.query.level ? String(req.query.level) : 'B1';

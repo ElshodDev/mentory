@@ -13,6 +13,16 @@ export const apiService = {
     return res.json();
   },
 
+  async generateCustomReading(telegramId: number, text?: string, imageBase64?: string, mimeType?: string) {
+    const res = await fetch(`${BASE_URL}/api/reading/custom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegramId, text, imageBase64, mimeType })
+    });
+    if (!res.ok) throw new Error('Custom reading error');
+    return res.json();
+  },
+
   async translateWord(word: string, sentence: string) {
     const res = await fetch(`${BASE_URL}/api/translate`, {
       method: 'POST',
