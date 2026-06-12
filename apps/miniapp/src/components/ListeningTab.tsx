@@ -143,11 +143,11 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
     }
     setIsTranslating(true);
     try {
-      const res = await apiService.translateWord(manualSearch, "YouTube video");
+      const res = await apiService.translateWord(manualSearch, "Translate this standalone word. If it is a common name like Jack, just say it is a name.");
       setSelectedWord({
         word: manualSearch.trim(),
         translation: res.translation || "Tarjima topilmadi",
-        sentence: "Video orqali kiritilgan so'z",
+        sentence: "Mustaqil kiritilgan so'z",
         type: res.type
       });
       setManualSearch('');
