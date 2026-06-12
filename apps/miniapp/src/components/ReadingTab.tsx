@@ -22,7 +22,7 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
   const [loadingReading, setLoadingReading] = useState(false);
   const [readingStep, setReadingStep] = useState<'text' | 'ai_summary' | 'speaking_bridge' | 'completed'>('text');
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
-  const [activeWordPopup, setActiveWordPopup] = useState<{ word: string; trans: string; isTranslating?: boolean } | null>(null);
+  const [activeWordPopup, setActiveWordPopup] = useState<{ word: string; trans: string; isTranslating?: boolean; type?: string } | null>(null);
   const [aiSummary, setAiSummary] = useState<string>('');
 
   const fetchNewReading = async () => {
@@ -94,7 +94,7 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
       try {
         const sentence = readingData?.text || '';
         const data = await apiService.translateWord(cleanWord, sentence);
-        setActiveWordPopup({ word: cleanWord, trans: data.translation });
+        setActiveWordPopup({ word: cleanWord, trans: data.translation, type: data.type });
         saveWordToDb(cleanWord, data.translation);
       } catch (e) {
         setActiveWordPopup({ word: cleanWord, trans: 'Tarjima yuklashda xato' });
@@ -170,6 +170,11 @@ export function ReadingTab({ telegramId, currentLevel, onXpEarned, onLessonCompl
                 <div className="text-[10px] text-indigo-400 font-extrabold uppercase tracking-wider mb-0.5">Lug'at va AI Tarjima</div>
                 <div className="text-lg font-extrabold text-white flex items-center gap-2">
                   {activeWordPopup.word}
+                  {activeWordPopup.type && (
+                    <span className="bg-indigo-500/20 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded-md uppercase font-bold">
+                      {activeWordPopup.type}
+                    </span>
+                  )}
                 </div>
                 <div className="text-amber-400 font-bold text-sm mt-1 flex items-center gap-1.5">
                   {activeWordPopup.isTranslating ? (

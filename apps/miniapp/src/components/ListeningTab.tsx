@@ -19,7 +19,7 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   
-  const [selectedWord, setSelectedWord] = useState<{word: string, translation: string, sentence: string} | null>(null);
+  const [selectedWord, setSelectedWord] = useState<{word: string, translation: string, sentence: string, type?: string} | null>(null);
   const [addingWord, setAddingWord] = useState(false);
 
   const [manualSearch, setManualSearch] = useState('');
@@ -101,18 +101,22 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
     if (playerRef.current) {
       playerRef.current.pauseVideo();
     }
-    // Simple translation fallback if it's not in vocab array
     const cleanWord = word.replace(/[^\w\s]/gi, '').toLowerCase();
-    const existing = vocab.find(v => v.word.toLowerCase() === cleanWord);
-    
-    if (existing) {
-      setSelectedWord(existing);
-    } else {
-      // For demo, we just show the word itself if we don't have AI translation for every single word
+    try {
+      const res = await apiService.translateWord(cleanWord, currentSentence);
+      setSelectedWord({
+        word: cleanWord,
+        translation: res.translation,
+        sentence: currentSentence,
+        type: res.type
+      });
+    } catch (e) {
+      // Fallback
       setSelectedWord({
         word: cleanWord,
         translation: "Tarjima jarayoni (Demo)",
-        sentence: currentSentence
+        sentence: currentSentence,
+        type: "word"
       });
     }
   };
@@ -143,7 +147,8 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
       setSelectedWord({
         word: manualSearch.trim(),
         translation: res.translation || "Tarjima topilmadi",
-        sentence: "Video orqali kiritilgan so'z"
+        sentence: "Video orqali kiritilgan so'z",
+        type: res.type
       });
       setManualSearch('');
     } catch (e) {
@@ -275,8 +280,15 @@ export function ListeningTab({ telegramId, initialVideoId }: ListeningTabProps) 
       {selectedWord && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#1a1c2e] border border-white/10 p-6 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <h3 className="text-3xl font-black text-white mb-2">{selectedWord.word}</h3>
-            <p className="text-rose-400 font-bold mb-4">{selectedWord.translation}</p>
+            <h3 className="text-3xl font-black text-white mb-1 flex justify-center items-center gap-2">
+              {selectedWord.word}
+            </h3>
+            {selectedWord.type && (
+              <span className="inline-block bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-0.5 rounded-md uppercase font-bold mb-2">
+                {selectedWord.type}
+              </span>
+            )}
+            <p className="text-rose-400 font-bold mb-4 text-lg">{selectedWord.translation}</p>
             
             <div className="bg-black/30 p-4 rounded-xl mb-6 text-sm text-slate-300 italic border border-white/5">
               "{selectedWord.sentence}"

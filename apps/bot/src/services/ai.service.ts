@@ -6,10 +6,21 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
 export class AIService {
-  static async translateWord(word: string, sentence: string): Promise<string> {
-    const prompt = `Act as an English teacher. Translate the word/phrase "${word}" to Uzbek in the context of the sentence: "${sentence}". Provide ONLY the translation and a very brief explanation.`;
+  static async translateWord(word: string, sentence: string): Promise<{translation: string, type: string}> {
+    const prompt = `Act as an English teacher. Translate the word/phrase "${word}" to Uzbek in the context of the sentence: "${sentence}".
+You MUST return ONLY a JSON object with this exact structure (do not include markdown ticks):
+{
+  "translation": "only the translated word/phrase in Uzbek",
+  "type": "part of speech (e.g. noun, verb, adj, adv, idiom)"
+}`;
     const result = await model.generateContent(prompt);
-    return result.response.text().trim();
+    const resText = result.response.text().trim();
+    const cleanJson = resText.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+    try {
+      return JSON.parse(cleanJson);
+    } catch(e) {
+      return { translation: resText, type: "word" };
+    }
   }
 
   static async generateReadingPassage(level: string): Promise<any> {

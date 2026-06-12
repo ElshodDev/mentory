@@ -11,8 +11,8 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
   router.post('/translate', async (req, res) => {
     try {
       const { word, sentence } = req.body;
-      const translation = await AIService.translateWord(word, sentence);
-      res.json({ translation });
+      const data = await AIService.translateWord(word, sentence);
+      res.json(data);
     } catch (error) {
       res.status(500).json({ error: "Tarjimada xatolik" });
     }
