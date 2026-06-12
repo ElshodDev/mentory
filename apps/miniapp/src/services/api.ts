@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://mentory.onrender.com';
+const BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://mentory.onrender.com';
 
 export const apiService = {
   async fetchProfile(telegramId: number, firstName: string, username?: string) {
