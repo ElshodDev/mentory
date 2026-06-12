@@ -1,5 +1,6 @@
-import fs from 'fs';
-import path from 'path';
+import mongoose, { Schema, Document } from 'mongoose';
+
+// ================= TYPES =================
 
 export interface UserProfile {
   telegramId: number;
@@ -39,158 +40,110 @@ export interface UserFeedback {
   createdAt: string;
 }
 
-interface DatabaseSchema {
-  users: UserProfile[];
-  words: SavedWord[];
-  feedbacks?: UserFeedback[];
-}
+// ================= SCHEMAS =================
 
-const DB_FILE = path.resolve(__dirname, '../db.json');
+const UserSchema = new Schema<UserProfile>({
+  telegramId: { type: Number, required: true, unique: true },
+  firstName: { type: String, required: true },
+  username: { type: String, required: false },
+  xp: { type: Number, default: 0 },
+  streak: { type: Number, default: 0 },
+  lastActiveDate: { type: String, default: '' },
+  totalLessons: { type: Number, default: 0 },
+  isSubscribed: { type: Boolean, default: false },
+  joinedAt: { type: String, default: '' },
+  league: { type: String, default: 'Bronze' },
+  referrals: { type: Number, default: 0 },
+  referredBy: { type: Number, required: false },
+  wins: { type: Number, default: 0 },
+  losses: { type: Number, default: 0 },
+  isPremium: { type: Boolean, default: false },
+});
 
-// Initialize database file if it doesn't exist
-function initDb(): DatabaseSchema {
-  if (!fs.existsSync(DB_FILE)) {
-    const defaultData: DatabaseSchema = { users: [], words: [], feedbacks: [] };
-    fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2), 'utf-8');
-    return defaultData;
-  }
-  try {
-    const content = fs.readFileSync(DB_FILE, 'utf-8');
-    const data = JSON.parse(content) as DatabaseSchema;
-    if (!data.feedbacks) {
-      data.feedbacks = [];
-    }
-    return data;
-  } catch (error) {
-    console.error("Error reading database file, resetting:", error);
-    const defaultData: DatabaseSchema = { users: [], words: [], feedbacks: [] };
-    fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2), 'utf-8');
-    return defaultData;
-  }
-}
+const WordSchema = new Schema<SavedWord>({
+  id: { type: String, required: true, unique: true },
+  userId: { type: Number, required: true },
+  word: { type: String, required: true },
+  translation: { type: String, required: true },
+  sentence: { type: String, default: '' },
+  interval: { type: Number, default: 1 },
+  repetitions: { type: Number, default: 0 },
+  easeFactor: { type: Number, default: 2.5 },
+  nextReviewDate: { type: String, required: true },
+});
 
-let dbCache = initDb();
+const FeedbackSchema = new Schema<UserFeedback>({
+  id: { type: String, required: true, unique: true },
+  userId: { type: Number, required: true },
+  rating: { type: Number, required: true },
+  comment: { type: String, default: '' },
+  createdAt: { type: String, required: true },
+});
 
-function saveDb() {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(dbCache, null, 2), 'utf-8');
-  } catch (error) {
-    console.error("Error saving database file:", error);
-  }
-}
+// Models
+const UserModel = mongoose.model<UserProfile>('User', UserSchema);
+const WordModel = mongoose.model<SavedWord>('Word', WordSchema);
+const FeedbackModel = mongoose.model<UserFeedback>('Feedback', FeedbackSchema);
+
+// ================= MANAGER =================
 
 export const dbManager = {
-  getUser(telegramId: number): UserProfile | undefined {
-    return dbCache.users.find(u => u.telegramId === telegramId);
-  },
-
-  createUser(profile: UserProfile): UserProfile {
-    const existing = this.getUser(profile.telegramId);
-    if (existing) return existing;
-    dbCache.users.push(profile);
-    saveDb();
-    return profile;
-  },
-
-  updateUser(profile: UserProfile): UserProfile {
-    const index = dbCache.users.findIndex(u => u.telegramId === profile.telegramId);
-    if (index !== -1) {
-      dbCache.users[index] = profile;
-    } else {
-      dbCache.users.push(profile);
+  // Connection
+  async connect(uri: string) {
+    if (mongoose.connection.readyState === 1) return;
+    try {
+      await mongoose.connect(uri);
+      console.log('✅ Connected to MongoDB');
+    } catch (error) {
+      console.error('❌ MongoDB Connection Error:', error);
     }
-    saveDb();
-    return profile;
   },
 
-  getAllUsers(): UserProfile[] {
-    return dbCache.users;
+  // User Methods
+  async getUser(telegramId: number): Promise<UserProfile | null> {
+    return UserModel.findOne({ telegramId }).lean();
   },
 
-  getWordsForUser(userId: number): SavedWord[] {
-    return dbCache.words.filter(w => w.userId === userId);
+  async createUser(profile: UserProfile): Promise<UserProfile> {
+    const user = new UserModel(profile);
+    await user.save();
+    return user.toObject();
   },
 
-  saveWord(userId: number, word: string, translation: string, sentence: string): SavedWord {
-    const wordId = `${word.toLowerCase()}_${userId}`;
-    const today = new Date().toISOString().split('T')[0];
-    
-    const existing = dbCache.words.find(w => w.id === wordId);
-    if (existing) {
-      existing.translation = translation;
-      existing.sentence = sentence;
-      saveDb();
-      return existing;
-    }
-
-    const newWord: SavedWord = {
-      id: wordId,
-      userId,
-      word,
-      translation,
-      sentence,
-      interval: 1,
-      repetitions: 0,
-      easeFactor: 2.5,
-      nextReviewDate: today
-    };
-
-    dbCache.words.push(newWord);
-    saveDb();
-    return newWord;
+  async updateUser(profile: UserProfile): Promise<UserProfile | null> {
+    return UserModel.findOneAndUpdate({ telegramId: profile.telegramId }, profile, { new: true, upsert: true }).lean();
   },
 
-  reviewWord(userId: number, word: string, difficulty: 'easy' | 'hard'): SavedWord | undefined {
-    const wordId = `${word.toLowerCase()}_${userId}`;
-    const wordIndex = dbCache.words.findIndex(w => w.id === wordId);
-    if (wordIndex === -1) return undefined;
-
-    const savedWord = dbCache.words[wordIndex];
-    const today = new Date();
-
-    if (difficulty === 'easy') {
-      savedWord.repetitions += 1;
-      if (savedWord.repetitions === 1) {
-        savedWord.interval = 1;
-      } else if (savedWord.repetitions === 2) {
-        savedWord.interval = 3;
-      } else if (savedWord.repetitions === 3) {
-        savedWord.interval = 7;
-      } else {
-        savedWord.interval = Math.round(savedWord.interval * savedWord.easeFactor);
-      }
-    } else {
-      // Hard - reset repetitions and set interval to 1 day
-      savedWord.repetitions = 0;
-      savedWord.interval = 1;
-    }
-
-    const nextDate = new Date();
-    nextDate.setDate(today.getDate() + savedWord.interval);
-    savedWord.nextReviewDate = nextDate.toISOString().split('T')[0];
-
-    dbCache.words[wordIndex] = savedWord;
-    saveDb();
-    return savedWord;
+  async getLeaderboard(limit = 100): Promise<UserProfile[]> {
+    return UserModel.find().sort({ xp: -1 }).limit(limit).lean();
   },
 
-  saveFeedback(userId: number, rating: number, comment: string): UserFeedback {
-    if (!dbCache.feedbacks) {
-      dbCache.feedbacks = [];
-    }
-    const feedback: UserFeedback = {
-      id: `${userId}_${Date.now()}`,
-      userId,
-      rating,
-      comment,
-      createdAt: new Date().toISOString(),
-    };
-    dbCache.feedbacks.push(feedback);
-    saveDb();
-    return feedback;
+  // Word Methods
+  async getWords(userId: number): Promise<SavedWord[]> {
+    return WordModel.find({ userId }).lean();
   },
 
-  getAllFeedbacks(): UserFeedback[] {
-    return dbCache.feedbacks || [];
+  async getWordsToReview(userId: number, todayDate: string): Promise<SavedWord[]> {
+    return WordModel.find({ userId, nextReviewDate: { $lte: todayDate } }).lean();
+  },
+
+  async saveWord(word: SavedWord): Promise<void> {
+    await WordModel.findOneAndUpdate({ id: word.id }, word, { new: true, upsert: true });
+  },
+
+  async getWord(userId: number, wordStr: string): Promise<SavedWord | null> {
+    const id = `${wordStr.toLowerCase()}_${userId}`;
+    return WordModel.findOne({ id }).lean();
+  },
+
+  async deleteWord(userId: number, wordStr: string): Promise<void> {
+    const id = `${wordStr.toLowerCase()}_${userId}`;
+    await WordModel.deleteOne({ id });
+  },
+
+  // Feedback Methods
+  async addFeedback(feedback: UserFeedback): Promise<void> {
+    const fb = new FeedbackModel(feedback);
+    await fb.save();
   }
 };

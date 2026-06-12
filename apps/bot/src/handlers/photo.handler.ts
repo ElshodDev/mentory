@@ -36,7 +36,17 @@ export async function handlePhotoMessage(ctx: Context) {
     for (let i = 0; i < extractedWords.length; i++) {
       const { word, translation, sentence } = extractedWords[i];
       // Save to DB
-      dbManager.saveWord(userId, word, translation, sentence);
+      await dbManager.saveWord({
+        id: `${word.toLowerCase()}_${userId}`,
+        userId,
+        word,
+        translation,
+        sentence: sentence || '',
+        interval: 1,
+        repetitions: 0,
+        easeFactor: 2.5,
+        nextReviewDate: new Date().toISOString().split('T')[0]
+      });
       responseText += `🔸 <b>${word}</b> - ${translation}\n`;
     }
 

@@ -7,7 +7,7 @@ export function PremiumTab() {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleUpgrade = (method?: 'stars' | 'click') => {
+  const handlePayment = () => {
     setIsProcessing(true);
     WebApp.HapticFeedback.impactOccurred('medium');
     setTimeout(() => {
@@ -111,7 +111,7 @@ export function PremiumTab() {
       <div className="space-y-3">
         <button 
           disabled={isProcessing}
-          onClick={() => handleUpgrade('stars')}
+          onClick={handlePayment}
           className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-[0_10px_20px_rgba(59,130,246,0.3)] transition-all active:scale-95 disabled:opacity-70"
         >
           {isProcessing ? (
@@ -127,7 +127,7 @@ export function PremiumTab() {
         
         <button 
           disabled={isProcessing}
-          onClick={() => handleUpgrade('click')}
+          onClick={handlePayment}
           className="w-full bg-[#1a1c2e] hover:bg-[#252840] border border-white/10 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
         >
           <CreditCard className="w-5 h-5 text-blue-400" />

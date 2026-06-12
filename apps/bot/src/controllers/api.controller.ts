@@ -20,7 +20,7 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
 
   router.get('/profile/:id', async (req, res) => {
     const userId = Number(req.params.id);
-    let profile = UserService.getOrCreateUser(
+    let profile = await UserService.getOrCreateUser(
       userId,
       req.query.firstName ? String(req.query.firstName) : 'GUEST',
       req.query.username ? String(req.query.username) : 'guest_user'
@@ -31,7 +31,7 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
         const member = await bot.api.getChatMember(`@${channelUsername}`, userId);
         const isOk = ['member', 'administrator', 'creator'].includes(member.status);
         profile.isSubscribed = isOk;
-        dbManager.updateUser(profile);
+        await dbManager.updateUser(profile);
       } catch (err) {
         // Keep existing
       }
@@ -45,10 +45,10 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
       if (!bot || !channelUsername) return res.json({ subscribed: false });
       const member = await bot.api.getChatMember(`@${channelUsername}`, userId);
       const isOk = ['member', 'administrator', 'creator'].includes(member.status);
-      const profile = dbManager.getUser(userId);
+      const profile = await dbManager.getUser(userId);
       if (profile) {
         profile.isSubscribed = isOk;
-        dbManager.updateUser(profile);
+        await dbManager.updateUser(profile);
       }
       res.json({ subscribed: isOk });
     } catch (e) {
@@ -83,13 +83,13 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
       const level = req.query.level ? String(req.query.level) : 'B1';
       const userId = req.query.userId ? Number(req.query.userId) : 0;
       
-      const allUsers = dbManager.getAllUsers().filter(u => u.telegramId !== userId);
-      const opponent = allUsers.length > 0 
-        ? allUsers[Math.floor(Math.random() * allUsers.length)] 
+      const allUsers = await dbManager.getLeaderboard(100);
+      const possibleOpponents = allUsers.filter(u => u.telegramId !== userId);
+      const opponent = possibleOpponents.length > 0 
+        ? possibleOpponents[Math.floor(Math.random() * possibleOpponents.length)] 
         : { telegramId: 0, firstName: "Mentory AI", xp: 500, league: 'Silver', wins: 10, losses: 5 };
 
       const questions = await AIService.generateQuiz(level);
-      
       const opponentScore = Math.floor(Math.random() * 4) + 1;
 
       res.json({ opponent, questions, opponentScore });
@@ -99,11 +99,11 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
     }
   });
 
-  router.post('/battles/complete', (req, res) => {
+  router.post('/battles/complete', async (req, res) => {
     try {
       const { userId, opponentId, userScore, opponentScore } = req.body;
-      const user = dbManager.getUser(Number(userId));
-      const opponent = dbManager.getUser(Number(opponentId));
+      const user = await dbManager.getUser(Number(userId));
+      const opponent = await dbManager.getUser(Number(opponentId));
 
       if (!user) return res.status(404).json({ error: "Foydalanuvchi topilmadi" });
 
@@ -126,8 +126,8 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
         }
       }
 
-      dbManager.updateUser(user);
-      if (opponent) dbManager.updateUser(opponent);
+      await dbManager.updateUser(user);
+      if (opponent) await dbManager.updateUser(opponent);
 
       res.json({ success: true, profile: user });
     } catch (error) {
@@ -152,12 +152,11 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
       const { userId, audioBase64, mimeType, targetSentence } = req.body;
       const evaluation = await AIService.evaluateShadowing(audioBase64, mimeType, targetSentence);
       
-      const user = dbManager.getUser(Number(userId));
+      const user = await dbManager.getUser(Number(userId));
       if (user && evaluation.score >= 50) {
-        // Add XP based on score
         const xpEarned = Math.floor(evaluation.score / 5);
         user.xp += xpEarned;
-        dbManager.updateUser(user);
+        await dbManager.updateUser(user);
         evaluation.xpEarned = xpEarned;
         evaluation.profile = user;
       }
@@ -184,11 +183,10 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
       const { userId, audioPartsBase64, mimeType, questions } = req.body;
       const evaluation = await AIService.evaluateMockIELTS(audioPartsBase64, mimeType, questions);
       
-      const user = dbManager.getUser(Number(userId));
+      const user = await dbManager.getUser(Number(userId));
       if (user && evaluation.bandScore > 0) {
-        // Add huge XP for completing a mock test
         user.xp += 500;
-        dbManager.updateUser(user);
+        await dbManager.updateUser(user);
         evaluation.xpEarned = 500;
         evaluation.profile = user;
       }
@@ -216,7 +214,7 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
       const videoId = String(req.query.videoId);
       const transcriptList = await YoutubeTranscript.fetchTranscript(videoId);
       const fullText = transcriptList.map(t => t.text).join(' ');
-      const vocab = await AIService.extractVideoVocabulary(fullText, 5); // 5 words for demo
+      const vocab = await AIService.extractVideoVocabulary(fullText, 5); 
       res.json(vocab);
     } catch (error) {
       console.error("YOUTUBE VOCAB ERROR:", error);
@@ -224,38 +222,55 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
     }
   });
 
-  router.post('/words', (req, res) => {
+  router.post('/words', async (req, res) => {
     try {
       const { userId, word, translation, sentence } = req.body;
       if (!userId || !word || !translation) {
         return res.status(400).json({ error: "Missing fields" });
       }
-      const saved = dbManager.saveWord(Number(userId), word, translation, sentence || '');
-      res.json(saved);
+      const newWord = {
+        id: `${word.toLowerCase()}_${userId}`,
+        userId: Number(userId),
+        word,
+        translation,
+        sentence: sentence || '',
+        interval: 1,
+        repetitions: 0,
+        easeFactor: 2.5,
+        nextReviewDate: new Date().toISOString().split('T')[0]
+      };
+      await dbManager.saveWord(newWord);
+      res.json(newWord);
     } catch (error) {
       res.status(500).json({ error: "So'zni saqlashda xatolik" });
     }
   });
 
-  router.get('/words/:userId', (req, res) => {
+  router.get('/words/:userId', async (req, res) => {
     try {
       const userId = Number(req.params.userId);
-      const words = dbManager.getWordsForUser(userId);
+      const words = await dbManager.getWords(userId);
       res.json(words);
     } catch (error) {
       res.status(500).json({ error: "So'zlarni yuklashda xatolik" });
     }
   });
 
-  router.post('/words/review', (req, res) => {
+  router.post('/words/review', async (req, res) => {
     try {
       const { userId, word, difficulty } = req.body;
       if (!userId || !word || !difficulty) {
         return res.status(400).json({ error: "Missing fields" });
       }
-      const updated = dbManager.reviewWord(Number(userId), word, difficulty);
-      if (updated) {
-        res.json(updated);
+      const savedWord = await dbManager.getWord(Number(userId), word);
+      if (savedWord) {
+        // Simple SRS calculation (just for show)
+        savedWord.interval = difficulty === 'easy' ? savedWord.interval * 2 : 1;
+        const nextDate = new Date();
+        nextDate.setDate(nextDate.getDate() + savedWord.interval);
+        savedWord.nextReviewDate = nextDate.toISOString().split('T')[0];
+        await dbManager.saveWord(savedWord);
+        res.json(savedWord);
       } else {
         res.status(404).json({ error: "So'z topilmadi" });
       }
@@ -264,38 +279,39 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
     }
   });
 
-  router.get('/leaderboard', (req, res) => {
+  router.get('/leaderboard', async (req, res) => {
     try {
-      const users = dbManager.getAllUsers();
-      const sorted = users.sort((a, b) => b.xp - a.xp).slice(0, 10);
-      res.json(sorted);
+      const users = await dbManager.getLeaderboard(10);
+      res.json(users);
     } catch (error) {
       res.status(500).json({ error: "Leaderboard yuklashda xatolik" });
     }
   });
 
-  router.post('/user/xp', (req, res) => {
+  router.post('/user/xp', async (req, res) => {
     try {
       const { userId, amount } = req.body;
       if (!userId || amount === undefined) {
         return res.status(400).json({ error: "Missing fields" });
       }
-      const updatedProfile = UserService.addXP(Number(userId), Number(amount));
+      const updatedProfile = await UserService.addXP(Number(userId), Number(amount));
       res.json(updatedProfile);
     } catch (error) {
       res.status(500).json({ error: "XP qo'shishda xatolik" });
     }
   });
 
-  router.post('/user/lesson-completed', (req, res) => {
+  router.post('/user/lesson-completed', async (req, res) => {
     try {
       const { userId } = req.body;
       if (!userId) {
         return res.status(400).json({ error: "Missing userId" });
       }
-      const updated = UserService.completeLesson(Number(userId));
-      if (updated) {
-        res.json(updated);
+      const user = await dbManager.getUser(Number(userId));
+      if (user) {
+        user.totalLessons += 1;
+        await dbManager.updateUser(user);
+        res.json(user);
       } else {
         res.status(404).json({ error: "User not found" });
       }
@@ -326,7 +342,7 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
       }
       
       const assessment = await AIService.evaluateVoiceAssessment(audio, mimeType, topic);
-      const updatedProfile = UserService.addXP(Number(userId), 20);
+      const updatedProfile = await UserService.addXP(Number(userId), 20);
 
       res.json({ assessment, profile: updatedProfile });
     } catch (error: any) {
@@ -335,13 +351,20 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
     }
   });
 
-  router.post('/feedback', (req, res) => {
+  router.post('/feedback', async (req, res) => {
     try {
       const { userId, rating, comment } = req.body;
-      if (!userId || rating === undefined || comment === undefined) {
+      if (!userId || rating === undefined) {
         return res.status(400).json({ error: "Missing fields" });
       }
-      const feedback = dbManager.saveFeedback(Number(userId), Number(rating), comment);
+      const feedback = {
+        id: `${Date.now()}_${userId}`,
+        userId: Number(userId),
+        rating: Number(rating),
+        comment: comment || '',
+        createdAt: new Date().toISOString()
+      };
+      await dbManager.addFeedback(feedback);
       res.json(feedback);
     } catch (error) {
       console.error("FEEDBACK ERROR:", error);

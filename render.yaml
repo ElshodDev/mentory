@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: mentory-bot
+    env: node
+    buildCommand: npm install && cd apps/bot && npm install && npm run build
+    startCommand: cd apps/bot && npm start
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MINI_APP_URL
+        sync: false
+      - key: CHANNEL_USERNAME
+        sync: false
+      - key: MONGODB_URI
+        sync: false

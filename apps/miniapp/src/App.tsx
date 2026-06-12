@@ -15,6 +15,7 @@ import { PremiumTab } from './components/PremiumTab';
 import { ShadowingTab } from './components/ShadowingTab';
 import { MockTestTab } from './components/MockTestTab';
 import { ListeningTab } from './components/ListeningTab';
+import { ProfileTab } from './components/ProfileTab';
 
 // Shared Types
 export interface UserProfile {
@@ -38,7 +39,7 @@ export interface SavedWord {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'reading' | 'cards' | 'listening' | 'writing' | 'voice' | 'leaderboard' | 'referrals' | 'quizzes' | 'battle' | 'premium' | 'mocktest'>('reading');
+  const [activeTab, setActiveTab] = useState<'reading' | 'cards' | 'listening' | 'writing' | 'voice' | 'leaderboard' | 'referrals' | 'quizzes' | 'battle' | 'premium' | 'mocktest' | 'profile'>('reading');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [startVideoId, setStartVideoId] = useState<string | undefined>(undefined);
@@ -151,7 +152,10 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 bg-[#121424] p-3 rounded-2xl border border-white/5 shadow-xl">
+        <div 
+          onClick={() => setActiveTab('profile')}
+          className="flex items-center gap-3 bg-[#121424] p-3 rounded-2xl border border-white/5 shadow-xl cursor-pointer active:scale-[0.98] transition-transform"
+        >
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl shadow-lg shadow-indigo-500/20 border border-white/10">
             {currentLevel.emoji}
           </div>
@@ -176,6 +180,7 @@ export default function App() {
       {/* MAIN CONTENT AREA */}
       <div className="p-5 relative z-10 min-h-[70vh]">
         <AnimatePresence mode="wait">
+          {activeTab === 'profile' && <ProfileTab profile={profile} />}
           {activeTab === 'reading' && (
             <ReadingTab 
               telegramId={telegramId} 

@@ -13,12 +13,13 @@ export class UserService {
     if (xp < 1500) return { level: 5, title: 'Upper-Intermediate', emoji: '🏆' };
     return         { level: 6, title: 'Advanced',      emoji: '💎' };
   }
-  static getOrCreateUser(telegramId: number, firstName: string, username?: string): DbUserProfile {
-    let profile = dbManager.getUser(telegramId);
+
+  static async getOrCreateUser(telegramId: number, firstName: string, username?: string): Promise<DbUserProfile> {
+    let profile = await dbManager.getUser(telegramId);
     const today = UserService.getTodayDate();
 
     if (!profile) {
-      profile = dbManager.createUser({
+      profile = await dbManager.createUser({
         telegramId,
         firstName,
         username,
@@ -53,16 +54,16 @@ export class UserService {
           }
         }
         profile.lastActiveDate = today;
-        dbManager.updateUser(profile);
+        await dbManager.updateUser(profile);
       }
     }
     return profile;
   }
 
-  static addXP(userId: number, amount: number): DbUserProfile {
-    let profile = dbManager.getUser(userId);
+  static async addXP(userId: number, amount: number): Promise<DbUserProfile> {
+    let profile = await dbManager.getUser(userId);
     if (!profile) {
-      profile = dbManager.createUser({
+      profile = await dbManager.createUser({
         telegramId: userId,
         firstName: 'GUEST',
         xp: 0,
@@ -80,30 +81,50 @@ export class UserService {
     }
     profile.xp += amount;
     const today = UserService.getTodayDate();
-
     if (profile.lastActiveDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-      if (profile.lastActiveDate === yesterdayStr) {
-        profile.streak += 1; // Streak davom etmoqda
-      } else {
-        profile.streak = 1; // Streak qayta boshlandi
-      }
       profile.lastActiveDate = today;
-      profile.totalLessons += 1;
+      // Streak calculation is handled in getOrCreateUser primarily, but let's keep it robust
     }
-
-    return dbManager.updateUser(profile);
+    await dbManager.updateUser(profile);
+    return profile;
   }
 
-  static completeLesson(userId: number): DbUserProfile | null {
-    const profile = dbManager.getUser(userId);
-    if (profile) {
-      profile.totalLessons += 1;
-      return dbManager.updateUser(profile);
+  static async getLeaderboard(): Promise<{ profile: DbUserProfile; levelInfo: any }[]> {
+    const users = await dbManager.getLeaderboard(100);
+    return users.map(u => ({
+      profile: u,
+      levelInfo: UserService.getLevel(u.xp)
+    }));
+  }
+
+  static async registerReferral(referrerId: number, newUserId: number, firstName: string): Promise<boolean> {
+    const existingUser = await dbManager.getUser(newUserId);
+    if (existingUser) return false; // Already joined
+
+    // Create the new user
+    await dbManager.createUser({
+      telegramId: newUserId,
+      firstName,
+      xp: 0,
+      streak: 1,
+      lastActiveDate: UserService.getTodayDate(),
+      totalLessons: 0,
+      isSubscribed: false,
+      joinedAt: UserService.getTodayDate(),
+      league: 'Bronze',
+      referrals: 0,
+      referredBy: referrerId,
+      isPremium: false,
+    });
+
+    // Add referral count and XP to referrer
+    const referrer = await dbManager.getUser(referrerId);
+    if (referrer) {
+      referrer.referrals = (referrer.referrals || 0) + 1;
+      referrer.xp += 100; // 100 XP bonus for referring
+      await dbManager.updateUser(referrer);
+      return true;
     }
-    return null;
+    return false;
   }
 }

@@ -25,10 +25,10 @@ async function checkSubscription(ctx: Context): Promise<boolean> {
   try {
     const member = await ctx.api.getChatMember(CHANNEL_USERNAME, ctx.from!.id);
     const isOk = ['member', 'administrator', 'creator'].includes(member.status);
-    const profile = dbManager.getUser(ctx.from!.id);
+    const profile = await dbManager.getUser(ctx.from!.id);
     if (profile) {
       profile.isSubscribed = isOk;
-      dbManager.updateUser(profile);
+      await dbManager.updateUser(profile);
     }
     return isOk;
   } catch {
@@ -39,9 +39,9 @@ async function checkSubscription(ctx: Context): Promise<boolean> {
 export async function handleStartCommand(ctx: any) {
   ctx.session.waitingFor = null;
 
-  // Check if this is a new user
-  const isNewUser = !dbManager.getUser(ctx.from!.id);
-  const profile = UserService.getOrCreateUser(ctx.from!.id, ctx.from!.first_name, ctx.from!.username);
+  const existingUser = await dbManager.getUser(ctx.from!.id);
+  const isNewUser = !existingUser;
+  const profile = await UserService.getOrCreateUser(ctx.from!.id, ctx.from!.first_name, ctx.from!.username);
 
   // Handle referrals
   const payload = ctx.match;
@@ -50,13 +50,13 @@ export async function handleStartCommand(ctx: any) {
     if (!isNaN(referrerId) && referrerId !== ctx.from!.id) {
       profile.referredBy = referrerId;
       profile.xp += 500;
-      dbManager.updateUser(profile);
+      await dbManager.updateUser(profile);
       
-      const referrer = dbManager.getUser(referrerId);
+      const referrer = await dbManager.getUser(referrerId);
       if (referrer) {
         referrer.referrals = (referrer.referrals || 0) + 1;
         referrer.xp += 500;
-        dbManager.updateUser(referrer);
+        await dbManager.updateUser(referrer);
         
         try {
           await ctx.api.sendMessage(
@@ -106,6 +106,8 @@ export async function handleStartCommand(ctx: any) {
 
   // Foydalanuvchi allaqachon obuna — xush kelibsiz
   profile.isSubscribed = true;
+  await dbManager.updateUser(profile);
+  
   const lvl = UserService.getLevel(profile.xp);
 
   await ctx.reply(
@@ -130,10 +132,10 @@ export async function handleOnboardingCallback(ctx: any) {
   if (data === 'onboard_b1') { bonusXp = 350; league = 'Silver'; }
   if (data === 'onboard_c1') { bonusXp = 1050; league = 'Gold'; }
 
-  const profile = UserService.getOrCreateUser(ctx.from!.id, ctx.from!.first_name, ctx.from!.username);
+  const profile = await UserService.getOrCreateUser(ctx.from!.id, ctx.from!.first_name, ctx.from!.username);
   profile.xp += bonusXp;
   profile.league = league;
-  dbManager.updateUser(profile);
+  await dbManager.updateUser(profile);
 
   const lvl = UserService.getLevel(profile.xp);
 

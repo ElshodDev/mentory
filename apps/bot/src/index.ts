@@ -164,10 +164,10 @@ bot.callbackQuery('check_sub', async (ctx) => {
   try {
     const member = await ctx.api.getChatMember(CHANNEL_USERNAME, ctx.from.id);
     if (['member', 'administrator', 'creator'].includes(member.status)) {
-      const profile = dbManager.getUser(ctx.from.id);
+      const profile = await dbManager.getUser(ctx.from.id);
       if (profile) {
         profile.isSubscribed = true;
-        dbManager.updateUser(profile);
+        await dbManager.updateUser(profile);
       }
       await ctx.editMessageText(
         `✅ Obuna tasdiqlandi! Rahmat.\n\nEndi botdan va ilovadan to'liq foydalanishingiz mumkin.`,
@@ -199,7 +199,7 @@ app.listen(3000, () => {
 cron.schedule('0 19 * * *', async () => {
   try {
     const today = UserService.getTodayDate();
-    const users = dbManager.getAllUsers();
+    const users = await dbManager.getLeaderboard(100000); // gets all mostly
     
     for (const u of users) {
       if (u.lastActiveDate && u.lastActiveDate !== today && u.isSubscribed) {
@@ -242,6 +242,10 @@ bot.start({
         { command: 'sample',      description: '🎯 Sample javob yozib ber' },
       ]);
       console.log('✅ Bot komandalari Telegramda muvaffaqiyatli o\'rnatildi!');
+
+      // Connect to MongoDB
+      const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/mentory';
+      await dbManager.connect(mongoUri);
     } catch (err) {
       console.error('❌ Bot komandalarini o\'rnatishda xatolik:', err);
     }
