@@ -79,6 +79,20 @@ export function ProfileTab({ profile, onProfileUpdated }: ProfileTabProps) {
           </div>
         </div>
 
+        {/* Share Button */}
+        <button 
+          onClick={() => {
+            try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
+            const text = encodeURIComponent(`🎉 Men Mentory AI da ${levelInfo.title} darajasidaman va ${profile.league} ligasidaman! Sen ham ingliz tilini o'rgan!`);
+            const url = encodeURIComponent('https://t.me/MentoryBot');
+            WebApp.openTelegramLink(`https://t.me/share/url?url=${url}&text=${text}`);
+          }}
+          className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-md transition-all flex items-center gap-1.5"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2"/></svg>
+          Ulashish
+        </button>
+
         {/* Level Progress */}
         <div className="mt-6 relative z-10">
           <div className="flex justify-between items-end mb-2">
@@ -144,6 +158,35 @@ export function ProfileTab({ profile, onProfileUpdated }: ProfileTabProps) {
         </div>
         <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
           Ushbu daraja orqali AI sizga aynan mos keladigan o'qish matnlari va testlarni tayyorlaydi.
+        </p>
+      </div>
+
+      {/* Study Time Selector */}
+      <div className="glassmorphism p-5 rounded-3xl relative overflow-hidden">
+        <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center justify-between">
+          <span>Dars Eslatmasi Vaqti</span>
+        </h3>
+        <div className="relative">
+          <input 
+            type="time" 
+            value={profile.studyTime || ''}
+            onChange={async (e) => {
+              const val = e.target.value;
+              // Optimistic update
+              onProfileUpdated({ ...profile, studyTime: val });
+              try {
+                const updated = await apiService.updateStudyTime(profile.telegramId, val);
+                onProfileUpdated(updated);
+                try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(err){}
+              } catch(err) {
+                WebApp.showAlert("Vaqtni saqlashda xatolik yuz berdi");
+              }
+            }}
+            className="w-full bg-[#121424] border border-white/10 rounded-2xl p-4 text-white font-bold appearance-none outline-none focus:border-indigo-500/50 transition-colors"
+          />
+        </div>
+        <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
+          Siz belgilagan vaqtda Mentory boti sizga kundalik darsingizni yuboradi.
         </p>
       </div>
 
@@ -225,6 +268,13 @@ export function ProfileTab({ profile, onProfileUpdated }: ProfileTabProps) {
                 key={badge.id}
                 whileHover={badge.unlocked ? { scale: 1.05 } : {}}
                 whileTap={badge.unlocked ? { scale: 0.95 } : {}}
+                onClick={() => {
+                  if (badge.unlocked) {
+                    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+                  } else {
+                    try { WebApp.HapticFeedback.notificationOccurred('error'); } catch(e){}
+                  }
+                }}
                 className={`relative overflow-hidden rounded-2xl p-4 border transition-all duration-300 ${
                   badge.unlocked 
                     ? 'bg-slate-800/50 border-white/10' 

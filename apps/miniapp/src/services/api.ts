@@ -89,6 +89,16 @@ export const apiService = {
     return res.json();
   },
 
+  async updateStudyTime(userId: number, studyTime: string) {
+    const res = await fetch(`${BASE_URL}/api/user/profile/time`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, studyTime })
+    });
+    if (!res.ok) throw new Error('Time update error');
+    return res.json();
+  },
+
   async fetchLeaderboard() {
     const res = await fetch(`${BASE_URL}/api/leaderboard`);
     if (!res.ok) throw new Error('Leaderboard fetch error');
@@ -178,6 +188,16 @@ export const apiService = {
   async getYoutubeVocab(videoId: string) {
     const res = await fetch(`${BASE_URL}/api/video/vocab?videoId=${videoId}`);
     if (!res.ok) throw new Error('Vocab fetch error');
+    return res.json();
+  },
+
+  async evaluateRoleplayTurn(audioBase64: string, mimeType: string, scenario: string, history: any[]) {
+    const res = await fetch(`${BASE_URL}/api/roleplay/turn`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audioBase64, mimeType, scenario, history })
+    });
+    if (!res.ok) throw new Error('Roleplay turn error');
     return res.json();
   }
 };

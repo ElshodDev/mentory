@@ -378,6 +378,25 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
     }
   });
 
+  router.post('/user/profile/time', async (req, res) => {
+    try {
+      const { userId, studyTime } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+      const user = await dbManager.getUser(Number(userId));
+      if (user) {
+        user.studyTime = studyTime;
+        await dbManager.updateUser(user);
+        res.json(user);
+      } else {
+        res.status(404).json({ error: "User not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Time update failed" });
+    }
+  });
+
   router.post('/writing', async (req, res) => {
     try {
       const { message } = req.body;
@@ -427,6 +446,17 @@ export function createApiRouter(bot?: Bot<any>, channelUsername?: string) {
     } catch (error) {
       console.error("FEEDBACK ERROR:", error);
       res.status(500).json({ error: "Feedback saqlashda xatolik" });
+    }
+  });
+
+  router.post('/roleplay/turn', async (req, res) => {
+    try {
+      const { audioBase64, mimeType, scenario, history } = req.body;
+      const turnData = await AIService.evaluateRoleplayTurn(audioBase64, mimeType, scenario, history);
+      res.json(turnData);
+    } catch (error) {
+      console.error("ROLEPLAY TURN ERROR:", error);
+      res.status(500).json({ error: "Rol o'ynashda xatolik yuz berdi" });
     }
   });
 

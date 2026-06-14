@@ -4,8 +4,8 @@ import { WRITING_TUTOR_PROMPT } from '../prompts/writing-tutor.prompt';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export async function handleWritingQuery(ctx: Context) {
-  const userMessage = ctx.message?.text;
+export async function handleWritingQuery(ctx: Context, overrideText?: string) {
+  const userMessage = overrideText || ctx.message?.text;
   if (!userMessage) return;
 
   const loadingMsg = await ctx.reply('✍️ *AI Writing Coach o\'ylamoqda...*', { parse_mode: 'Markdown' });

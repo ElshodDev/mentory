@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Mic, Square, Volume2, Award, Loader2, ArrowRight } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { apiService } from '../services/api';
+import { Roleplay } from './Roleplay';
 
 interface ShadowingTabProps {
   telegramId: number;
@@ -11,6 +12,7 @@ interface ShadowingTabProps {
 }
 
 export function ShadowingTab({ telegramId, currentLevel, onProfileUpdated }: ShadowingTabProps) {
+  const [mode, setMode] = useState<'shadowing' | 'roleplay'>('roleplay');
   const [targetSentence, setTargetSentence] = useState<{sentence: string, translation: string} | null>(null);
   const [loadingSentence, setLoadingSentence] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -117,13 +119,32 @@ export function ShadowingTab({ telegramId, currentLevel, onProfileUpdated }: Sha
     <div className="py-6 pb-24">
       <div className="flex items-center justify-between mb-6 px-2">
         <div>
-          <h2 className="text-2xl font-black text-white">Shadowing 🗣</h2>
-          <p className="text-slate-400 text-sm">Talaffuzni charxlash</p>
+          <h2 className="text-2xl font-black text-white">Voice Hub 🗣</h2>
+          <p className="text-slate-400 text-sm">Talaffuz va Suhbat</p>
         </div>
       </div>
 
-      <div className="bg-[#121424] border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden mb-8">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl"></div>
+      <div className="flex bg-white/5 p-1 rounded-xl mb-6">
+        <button 
+          onClick={() => { try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){} setMode('shadowing'); }}
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'shadowing' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+        >
+          Shadowing
+        </button>
+        <button 
+          onClick={() => { try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){} setMode('roleplay'); }}
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'roleplay' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+        >
+          Roleplay
+        </button>
+      </div>
+
+      {mode === 'roleplay' ? (
+        <Roleplay />
+      ) : (
+        <>
+          <div className="bg-[#121424] border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden mb-8">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl"></div>
         <p className="text-sm text-indigo-400 font-bold mb-2 uppercase tracking-widest">Target Sentence</p>
         <p className="text-2xl font-black text-white leading-tight mb-4">
           "{targetSentence?.sentence}"
@@ -197,9 +218,11 @@ export function ShadowingTab({ telegramId, currentLevel, onProfileUpdated }: Sha
             onClick={loadSentence}
             className="w-full py-4 flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl active:scale-95 transition-all"
           >
-            Keyingi jumla <ArrowRight className="w-4 h-4" />
-          </button>
-        </motion.div>
+              Keyingi jumla <ArrowRight className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+        </>
       )}
     </div>
   );

@@ -73,17 +73,12 @@ export async function handleStartCommand(ctx: any) {
 
   // Onboarding (Darajani tanlash) faqat yangi foydalanuvchilarga
   if (profile.xp === 0 && profile.totalLessons === 0) {
+    ctx.session.waitingFor = 'ai_onboarding' as any;
     await ctx.reply(
       `🎉 <b>Mentory AI</b> ga xush kelibsiz, <b>${ctx.from!.first_name}</b>!\n\n` +
-      `Sizga mos darsliklarni tanlashim uchun, iltimos, ingliz tili darajangizni belgilang. ` +
-      `Tanlovingizga qarab sizga boshlang'ich bonus XP taqdim etiladi!`,
-      {
-        parse_mode: 'HTML',
-        reply_markup: new InlineKeyboard()
-          .text('🌱 Beginner (A1-A2)', 'onboard_a1').row()
-          .text('📘 Intermediate (B1-B2)', 'onboard_b1').row()
-          .text('🏆 Advanced (C1-C2)', 'onboard_c1')
-      }
+      `Sizga darslarni aniq moslashtirishim uchun, menga o'zingiz haqingizda ingliz tilida 1-2 ta gap yozib yuboring.\n` +
+      `(Masalan: "Hello, my name is Ali. I want to learn English for my job.")`,
+      { parse_mode: 'HTML' }
     );
     return;
   }

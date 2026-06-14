@@ -11,6 +11,7 @@ import { LeaderboardTab } from './components/LeaderboardTab';
 import { ReferralsTab } from './components/ReferralsTab';
 import { QuizzesTab } from './components/QuizzesTab';
 import { BattleTab } from './components/BattleTab';
+import { DailyQuestsTab } from './components/DailyQuestsTab';
 import { Onboarding } from './components/Onboarding';
 import { PremiumTab } from './components/PremiumTab';
 import { ShadowingTab } from './components/ShadowingTab';
@@ -28,7 +29,9 @@ export interface UserProfile {
   league: string;
   totalLessons: number;
   referrals?: number;
+  isPremium?: boolean;
   englishLevel?: string;
+  studyTime?: string;
 }
 
 export interface SavedWord {
@@ -41,15 +44,15 @@ export interface SavedWord {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'reading' | 'cards' | 'listening' | 'writing' | 'voice' | 'leaderboard' | 'referrals' | 'quizzes' | 'battle' | 'premium' | 'mocktest' | 'profile'>('reading');
+  const [activeTab, setActiveTab] = useState<'reading' | 'cards' | 'listening' | 'writing' | 'voice' | 'leaderboard' | 'referrals' | 'quizzes' | 'battle' | 'premium' | 'mocktest' | 'profile' | 'quests'>('reading');
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [startVideoId, setStartVideoId] = useState<string | undefined>(undefined);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Get Telegram WebApp user or mock
-  const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
-  const telegramId = tgUser?.id || 12345;
+  const tgUser = WebApp.initDataUnsafe?.user;
+  const telegramId = tgUser?.id || (import.meta.env.DEV ? 12345 : 0);
   const firstName = tgUser?.first_name || 'Mehmon';
   const username = tgUser?.username || 'mehmon_user';
 
@@ -117,6 +120,20 @@ export default function App() {
     cefr: profile.englishLevel || getLevelInfo(profile.xp).cefr
   } : { level: 1, title: 'Beginner', emoji: '🌱', cefr: 'A1' };
 
+  let progressPercent = 0;
+  if (profile) {
+    const xp = profile.xp;
+    const { level } = getLevelInfo(xp);
+    const thresholds = [0, 100, 300, 600, 1000, 1500];
+    if (level < 6) {
+      const base = thresholds[level - 1];
+      const next = thresholds[level];
+      progressPercent = Math.min(100, Math.max(0, ((xp - base) / (next - base)) * 100));
+    } else {
+      progressPercent = 100;
+    }
+  }
+
   if (loadingProfile) {
     return (
       <div className="min-h-screen bg-[#090a12] text-white font-sans flex flex-col items-center justify-center p-6">
@@ -148,10 +165,13 @@ export default function App() {
             <button onClick={() => setActiveTab('premium')} className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-yellow-500/5 active:scale-95 transition-transform">
               <Crown className="w-4 h-4 text-yellow-500" />
             </button>
-            <button onClick={() => setActiveTab('battle')} className="flex items-center gap-1.5 bg-gradient-to-r from-rose-500/10 to-red-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-rose-500/5 active:scale-95 transition-transform">
+            <button onClick={() => { try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){} setActiveTab('battle'); }} className="flex items-center gap-1.5 bg-gradient-to-r from-rose-500/10 to-red-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-rose-500/5 active:scale-95 transition-transform">
               <Swords className="w-4 h-4 text-rose-500" />
             </button>
-            <button onClick={() => setActiveTab('referrals')} className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-cyan-500/5 active:scale-95 transition-transform">
+            <button onClick={() => { try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){} setActiveTab('quests'); }} className="flex items-center gap-1.5 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-green-500/5 active:scale-95 transition-transform">
+              <Star className="w-4 h-4 text-green-400" />
+            </button>
+            <button onClick={() => { try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){} setActiveTab('referrals'); }} className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-xl shadow-lg shadow-cyan-500/5 active:scale-95 transition-transform">
               <Users className="w-4 h-4 text-cyan-400" />
             </button>
             
@@ -185,7 +205,7 @@ export default function App() {
             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full relative" 
-                style={{ width: `${Math.min(100, ((profile?.xp || 0) % 500) / 500 * 100)}%` }}
+                style={{ width: `${progressPercent}%` }}
               >
                 <div className="absolute top-0 right-0 bottom-0 w-4 bg-white/20 blur-[2px]"></div>
               </div>
@@ -249,6 +269,7 @@ export default function App() {
           {activeTab === 'leaderboard' && <LeaderboardTab />}
           {activeTab === 'referrals' && <ReferralsTab telegramId={telegramId} referralsCount={profile?.referrals || 0} />}
           {activeTab === 'premium' && <PremiumTab />}
+          {activeTab === 'quests' && <DailyQuestsTab profile={profile} onProfileUpdated={setProfile} />}
         </AnimatePresence>
       </div>
 

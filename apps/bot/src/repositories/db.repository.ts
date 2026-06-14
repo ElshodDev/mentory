@@ -2,6 +2,14 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 // ================= TYPES =================
 
+export interface DailyQuest {
+  id: string;
+  title: string;
+  target: number;
+  progress: number;
+  completed: boolean;
+}
+
 export interface UserProfile {
   telegramId: number;
   firstName: string;
@@ -19,6 +27,8 @@ export interface UserProfile {
   losses?: number;
   isPremium?: boolean;
   englishLevel?: string; // e.g. A1, A2, B1, B2, C1, IELTS
+  dailyQuests?: DailyQuest[];
+  studyTime?: string; // e.g. "20:30"
 }
 
 export interface SavedWord {
@@ -43,6 +53,14 @@ export interface UserFeedback {
 
 // ================= SCHEMAS =================
 
+const QuestSchema = new Schema<DailyQuest>({
+  id: { type: String, required: true },
+  title: { type: String, required: true },
+  target: { type: Number, required: true },
+  progress: { type: Number, default: 0 },
+  completed: { type: Boolean, default: false }
+});
+
 const UserSchema = new Schema<UserProfile>({
   telegramId: { type: Number, required: true, unique: true },
   firstName: { type: String, required: true },
@@ -59,7 +77,9 @@ const UserSchema = new Schema<UserProfile>({
   wins: { type: Number, default: 0 },
   losses: { type: Number, default: 0 },
   isPremium: { type: Boolean, default: false },
-  englishLevel: { type: String, default: 'Intermediate' }
+  englishLevel: { type: String, default: 'Intermediate' },
+  dailyQuests: { type: [QuestSchema], default: [] },
+  studyTime: { type: String, default: '' }
 });
 
 const WordSchema = new Schema<SavedWord>({
@@ -118,6 +138,17 @@ export const dbManager = {
 
   async getLeaderboard(limit = 100): Promise<UserProfile[]> {
     return UserModel.find().sort({ xp: -1 }).limit(limit).lean();
+  },
+
+  async getInactiveUsers(todayDate: string): Promise<UserProfile[]> {
+    return UserModel.find({ 
+      lastActiveDate: { $nin: [todayDate, ''] }, 
+      isSubscribed: true 
+    }).lean();
+  },
+
+  async getUsersByStudyTime(timeStr: string): Promise<UserProfile[]> {
+    return UserModel.find({ studyTime: timeStr }).lean();
   },
 
   // Word Methods

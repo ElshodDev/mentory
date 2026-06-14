@@ -107,11 +107,11 @@ You MUST return ONLY a raw JSON object (do not wrap in markdown code blocks, do 
     {
       "original": "Incorrect or clumsy phrase/word used by user",
       "corrected": "Improved or corrected version of that phrase/word",
-      "explanation": "Brief explanation in Uzbek of the mistake and how to fix it"
+      "explanation": "VERY SHORT explanation in Uzbek (max 1 sentence)"
     }
   ],
-  "pronunciation": "Feedback on their pronunciation, accent, and word stress in Uzbek",
-  "fluency": "Feedback on their speaking pace, hesitation, and sentence flow in Uzbek",
+  "pronunciation": "1 short sentence of feedback on pronunciation in Uzbek",
+  "fluency": "1 short sentence of feedback on fluency in Uzbek",
   "bandScore": "Estimated IELTS Speaking band score (e.g. 5.0, 6.0, 7.5)"
 }
 
@@ -229,7 +229,7 @@ Return ONLY raw JSON in this format:
 1. Listen to the audio.
 2. Evaluate their pronunciation, accent, and fluency.
 3. Give a score from 0 to 100.
-4. Provide a brief feedback in Uzbek (e.g., which words were mispronounced).
+4. Provide VERY SHORT feedback in Uzbek (max 1-2 sentences).
 Return ONLY raw JSON matching this structure:
 {
   "score": 85,
@@ -254,6 +254,49 @@ Do not wrap in markdown code blocks.`;
       return JSON.parse(cleanJson);
     } catch (parseError) {
       return { score: 0, feedback: "Ovozni tahlil qilishda xatolik yuz berdi." };
+    }
+  }
+
+  static async evaluateRoleplayTurn(audioBase64: string, mimeType: string, scenario: string, chatHistory: any[]): Promise<any> {
+    const historyText = chatHistory.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n');
+    
+    const prompt = `You are a native English speaker roleplaying with an English learner.
+The scenario is: "${scenario}".
+Here is the chat history so far:
+${historyText || "No history yet, the user is starting."}
+
+1. Listen to the user's latest audio response.
+2. Provide a short, natural conversational reply (1-2 sentences) acting in your role.
+3. Provide a VERY SHORT feedback in Uzbek about their pronunciation or grammar (max 1 sentence).
+4. If they said something incomprehensible, ask them to repeat.
+Return ONLY raw JSON in this format:
+{
+  "userTranscript": "What the user said",
+  "aiResponse": "Your conversational reply in English",
+  "feedbackUz": "Qisqacha o'zbekcha feedback xatolar bo'yicha (agar xato yo'q bo'lsa 'Hammasi zo\\'r!' deb yozing)"
+}
+Do not wrap in markdown code blocks.`;
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: audioBase64,
+          mimeType: mimeType
+        }
+      }
+    ]);
+
+    const resText = result.response.text().trim();
+    const cleanJson = resText.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+    try {
+      return JSON.parse(cleanJson);
+    } catch (parseError) {
+      return { 
+        userTranscript: "Ovozni tushunib bo'lmadi", 
+        aiResponse: "Sorry, I couldn't catch that. Could you repeat?", 
+        feedbackUz: "Ovozni tahlil qilishda xatolik yuz berdi." 
+      };
     }
   }
 
@@ -292,7 +335,7 @@ ${JSON.stringify(questions, null, 2)}
 1. Listen to all audio parts carefully.
 2. Evaluate Fluency, Lexical Resource, Grammatical Range, and Pronunciation.
 3. Give an overall IELTS Band Score (e.g. 6.0, 6.5, 7.0).
-4. Provide detailed feedback in Uzbek.
+4. Provide VERY SHORT and specific feedback in Uzbek (max 2-3 sentences).
 Return ONLY raw JSON matching this structure:
 {
   "bandScore": 6.5,
