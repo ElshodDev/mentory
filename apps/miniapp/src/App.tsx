@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Flame, BookOpen, Layers, Mic, Trophy, Sparkles, Users, Target, Swords, Crown, Zap } from 'lucide-react';
+import { Flame, BookOpen, Layers, Mic, Trophy, Sparkles, Users, Target, Swords, Crown, Zap, Star } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { apiService } from './services/api';
 
@@ -20,6 +20,14 @@ import { ListeningTab } from './components/ListeningTab';
 import { ProfileTab } from './components/ProfileTab';
 
 // Shared Types
+export interface DailyQuest {
+  id: string;
+  title: string;
+  target: number;
+  progress: number;
+  completed: boolean;
+}
+
 export interface UserProfile {
   telegramId: number;
   firstName: string;
@@ -32,6 +40,7 @@ export interface UserProfile {
   isPremium?: boolean;
   englishLevel?: string;
   studyTime?: string;
+  dailyQuests?: DailyQuest[];
 }
 
 export interface SavedWord {
@@ -52,7 +61,7 @@ export default function App() {
 
   // Get Telegram WebApp user or mock
   const tgUser = WebApp.initDataUnsafe?.user;
-  const telegramId = tgUser?.id || (import.meta.env.DEV ? 12345 : 0);
+  const telegramId = tgUser?.id || ((import.meta as any).env?.DEV ? 12345 : 0);
   const firstName = tgUser?.first_name || 'Mehmon';
   const username = tgUser?.username || 'mehmon_user';
 
